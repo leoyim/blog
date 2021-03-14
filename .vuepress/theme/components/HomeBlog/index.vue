@@ -14,18 +14,17 @@
 
         <ModuleTransition delay="0.04">
           <h1 v-if="recoShowModule && $frontmatter.heroText !== null">
-            {{ $frontmatter.heroText || $title || 'JingShui Blog' }}
+            {{ motto.title }}
           </h1>
         </ModuleTransition>
 
         <ModuleTransition delay="0.08">
           <p v-if="recoShowModule && $frontmatter.tagline !== null" class="description">
-            {{ $frontmatter.tagline || $description || '' }}
+            {{ motto.description }}
           </p>
         </ModuleTransition>
       </div>
     </div>
-
     <ModuleTransition delay="0.16">
       <div v-show="recoShowModule" class="home-blog-wrapper">
         <div class="blog-list">
@@ -68,6 +67,21 @@ import PersonalInfo from '@theme/components/PersonalInfo'
 import { getOneColor } from '@theme/helpers/other'
 
 export default defineComponent({
+  data() {
+    return {
+      mottos: [
+        {
+          title: '风物长宜放眼量',
+          description: 'One needs to take a longer view'
+        },
+        {
+          title: '不忘初心，方得始终',
+          description: 'Never forget why you started, and your mission can be accomplished'
+        }
+      ],
+      motto: {}
+    }
+  },
   components: { NoteAbstract, TagList, FriendLink, ModuleTransition, PersonalInfo, RecoIcon },
   setup (props, ctx) {
     const instance = getCurrentInstance().proxy
@@ -82,22 +96,25 @@ export default defineComponent({
     const heroImageStyle = computed(() => instance.$frontmatter.heroImageStyle || {})
 
     const bgImageStyle = computed(() => {
-      
+    
       const bgUrl = [
-        'https://images.wallpaperscraft.com/image/road_marking_bridge_123398_1920x1080.jpg',
-        'https://images.wallpaperscraft.com/image/railway_train_station_134586_1920x1080.jpg'
-      ]
+        'http://image.yanwenbo.net/p1.jpg',
+        'http://image.yanwenbo.net/p2.jpg',
+        'http://image.yanwenbo.net/p3.jpg',
+        'http://image.yanwenbo.net/p4.jpg',
+        'http://image.yanwenbo.net/p5.jpg',
+        'http://image.yanwenbo.net/p6.jpg',
+        'http://image.yanwenbo.net/p7.jpg'
+      ] 
 
       // const url = instance.$frontmatter.bgImage
       //   ? instance.$withBase(instance.$frontmatter.bgImage)
       //   : require('../../images/bg.svg')
 
-      console.log(instance.$frontmatter.backgrounds)
-
       const initBgImageStyle = {
         textAlign: 'center',
         overflow: 'hidden',
-        background: `url(${bgUrl[Math.floor((Math.random()*bgUrl.length))]}) center/cover no-repeat`
+        background: `url(${ bgUrl[Math.floor((Math.random() * bgUrl.length))] }) center/cover no-repeat`
       }
 
       const { bgImageStyle } = instance.$frontmatter
@@ -111,6 +128,9 @@ export default defineComponent({
     })
 
     return { recoShowModule, heroImageStyle, bgImageStyle, ...toRefs(state), getOneColor }
+  },
+  mounted() {
+    this.motto = this.mottos[Math.floor((Math.random() * this.mottos.length))]
   },
   methods: {
     paginationChange (page) {
@@ -147,6 +167,7 @@ export default defineComponent({
     align-items center
     justify-content center
     color #FFF
+    text-shadow 5px 2px 6px #000
     .hero-img {
       max-width: 300px;
       margin: 0 auto 1.5rem

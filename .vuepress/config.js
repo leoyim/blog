@@ -92,8 +92,8 @@ module.exports = {
     "lastUpdated": "Last Updated",
     "author": "leoyim",
     "authorAvatar": "/avatar.png",
-    "record": "xxxx",
-    "startYear": "2017"
+    "record": "豫ICP备2020035217号",
+    "startYear": "2021"
   },
   "markdown": {
     "lineNumbers": true

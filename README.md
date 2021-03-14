@@ -1,7 +1,7 @@
 ---
 home: true
 heroText: 风物长宜放眼量
-tagline: one needs to take a longer view
+tagline: One needs to take a longer view
 # heroImage: /hero.png
 # heroImageStyle: {
 #   maxWidth: '600px',
