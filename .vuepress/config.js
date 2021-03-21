@@ -22,54 +22,55 @@ module.exports = {
   "themeConfig": {
     "nav": [
       {
-        "text": "Home",
+        "text": "首页",
         "link": "/",
         "icon": "reco-home"
       },
       {
-        "text": "TimeLine",
+        "text": "时间线",
         "link": "/timeline/",
         "icon": "reco-date"
       },
       {
-        "text": "Docs",
+        "text": "笔记",
         "icon": "reco-message",
         "items": [
           {
-            "text": "vuepress-reco",
-            "link": "/docs/theme-reco/"
+            "text": "技术",
+            "link": "/docs/wiki/"
           }
         ]
       },
       {
-        "text": "Contact",
+        "text": "链接",
         "icon": "reco-message",
         "items": [
           {
             "text": "GitHub",
-            "link": "https://github.com/recoluan",
+            "link": "https://github.com/leoyim",
             "icon": "reco-github"
           }
         ]
       }
     ],
     "sidebar": {
-      "/docs/theme-reco/": [
+      "/docs/wiki/": [
         "",
         "theme",
         "plugin",
-        "api"
+        "api",
+        "components"
       ]
     },
     "type": "blog",
     "blogConfig": {
       "category": {
         "location": 2,
-        "text": "Category"
+        "text": "分类"
       },
       "tag": {
         "location": 3,
-        "text": "Tag"
+        "text": "标签"
       }
     },
     "friendLink": [
@@ -93,9 +94,75 @@ module.exports = {
     "author": "leoyim",
     "authorAvatar": "/avatar.png",
     "record": "豫ICP备2020035217号",
-    "startYear": "2021"
+    "startYear": "2021",
+    /**
+     * support for
+     * 'default'
+     * 'funky'
+     * 'okaidia'
+     * 'solarizedlight'
+     * 'tomorrow'
+     */
+    codeTheme: 'okaidia' // default 'tomorrow'
   },
   "markdown": {
     "lineNumbers": true
-  }
+  },
+  plugins: [
+    [
+      "@vuepress-reco/comments", 
+      {
+        solution: 'valine',
+        options: {
+          showComment: false,
+          appId: '5zuUDPe9P76BKCAfCdaJLGJH-gzGzoHsz',// your appId
+          appKey: 'OhpnjpGkNkWp8STP8TJ4bgdl', // your appKey
+      }
+    }],
+    [
+      "dynamic-title",
+      {
+        showIcon: "/favicon.ico",
+        showText: "(/≧▽≦/)咦！又好了！",
+        hideIcon: "/failure.ico",
+        hideText: "(●—●)喔哟，崩溃啦！",
+        recoverTime: 2000
+    }],
+    ["vuepress-plugin-nuggets-style-copy", {
+      copyText: "复制代码",
+      tip: {
+          content: "复制成功!"
+      }
+    }],
+    ['@vuepress-reco/vuepress-plugin-bulletin-popover', {
+      width: '300px', // 默认 260px
+      title: '消息提示',
+      body: [
+        {
+          type: 'title',
+          content: '欢迎访问静水博客！',
+          style: 'text-aligin: center;'
+        },
+        {
+          type: 'image',
+          src: 'http://image.yanwenbo.net/qrcode.png'
+        }
+      ],
+      // footer: [
+      //   {
+      //     type: 'button',
+      //     text: '打赏',
+      //     link: '/donate'
+      //   }
+      // ]
+    }],
+    [
+      "Pagation",
+      {
+        total: 10,
+        perPage: 10,
+        currentPage: 1
+      }
+    ]
+  ]
 }

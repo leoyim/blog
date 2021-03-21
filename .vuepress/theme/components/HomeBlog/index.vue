@@ -77,6 +77,10 @@ export default defineComponent({
         {
           title: '不忘初心，方得始终',
           description: 'Never forget why you started, and your mission can be accomplished'
+        },
+        {
+          title: '面朝大海，春暖花开',
+          description: 'Facing the sea, spring flowers bloom'
         }
       ],
       motto: {}
@@ -151,8 +155,8 @@ export default defineComponent({
   src:url('http://image.yanwenbo.net/suxinshikaiti.woff');
 }
 @font-face {
-  font-family: FiraCode;
-  src:url('http://image.yanwenbo.net/FiraCode.ttf');
+  font-family: italic;
+  src:url('http://image.yanwenbo.net/italic.otf');
 }
 .home-blog {
   padding: 0;
@@ -181,7 +185,7 @@ export default defineComponent({
     }
 
     .description {
-      font-family: 'FiraCode';
+      font-family: 'italic';
       margin: 1.8rem auto;
       font-size: 1.6rem;
       line-height: 1.3;

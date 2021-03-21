@@ -48,7 +48,6 @@
         </p>
       </div>
     </ModuleTransition>
-
     <ModuleTransition delay="0.32">
       <Comments v-if="recoShowModule" :isShowComments="shouldShowComments"/>
     </ModuleTransition>

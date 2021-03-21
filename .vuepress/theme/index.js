@@ -22,7 +22,15 @@ module.exports = (options, ctx) => ({
     '@vuepress-reco/back-to-top',
     '@vuepress-reco/loading-page',
     '@vuepress-reco/pagation',
-    '@vuepress-reco/comments',
+    ['@vuepress-reco/comments', {
+      choosen: 'valine', 
+      // options选项中的所有参数，会传给Valine的配置
+      options: {
+        el: '#vcomments',
+        appId: '5zuUDPe9P76BKCAfCdaJLGJH-gzGzoHsz',
+        appKey: 'OhpnjpGkNkWp8STP8TJ4bgdl'
+      }
+    }],
     '@vuepress/active-header-links',
     ['@vuepress/medium-zoom', {
       selector: '.theme-reco-content :not(a) > img'
