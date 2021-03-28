@@ -80,7 +80,10 @@ export default defineComponent({
   padding: 4.6rem 2.5rem 0;
   .category-wrapper {
     list-style none
-    padding-left 0
+    border-radius 6px
+    padding 5px 0 0 0
+    box-shadow 0px 1px 5px 0px #00000030
+    text-align center
     .category-item {
       vertical-align: middle;
       margin: 4px 8px 10px;

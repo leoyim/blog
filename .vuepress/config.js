@@ -145,7 +145,7 @@ module.exports = {
         },
         {
           type: 'image',
-          src: 'http://image.yanwenbo.net/qrcode.png'
+          src: 'http://image.yanwenbo.net/qr.png'
         }
       ],
       // footer: [
