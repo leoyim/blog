@@ -1,8 +1,8 @@
 <rss xmlns:atom="http://www.w3.org/2005/Atom" version="2.0">
     <channel>
-        <title>持续交付 - 分类 - LeoYim&#39;s Note</title>
+        <title>持续交付 - 分类 - LeoYim&#39;s Blog</title>
         <link>http://leoyim.cn/categories/%E6%8C%81%E7%BB%AD%E4%BA%A4%E4%BB%98/</link>
-        <description>持续交付 - 分类 - LeoYim&#39;s Note</description>
+        <description>持续交付 - 分类 - LeoYim&#39;s Blog</description>
         <generator>Hugo -- gohugo.io</generator><language>zh-CN</language><managingEditor>leo.yanwb@outlook.com (leoyim)</managingEditor>
             <webMaster>leo.yanwb@outlook.com (leoyim)</webMaster><copyright>This work is licensed under a Creative Commons Attribution-NonCommercial 4.0 International License.</copyright><lastBuildDate>Fri, 23 Dec 2022 15:47:22 &#43;0800</lastBuildDate><atom:link href="http://leoyim.cn/categories/%E6%8C%81%E7%BB%AD%E4%BA%A4%E4%BB%98/" rel="self" type="application/rss+xml" /><item>
     <title>如何使用GitHub Actions构建并部署网站</title>

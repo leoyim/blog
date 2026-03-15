@@ -1,6 +1,6 @@
 <rss xmlns:atom="http://www.w3.org/2005/Atom" version="2.0">
     <channel>
-        <title>LeoYim&#39;s Note</title>
+        <title>LeoYim&#39;s Blog</title>
         <link>http://leoyim.cn/</link>
         <description>关于 LeoYim 主题</description>
         <generator>Hugo -- gohugo.io</generator><language>zh-CN</language><managingEditor>leo.yanwb@outlook.com (leoyim)</managingEditor>

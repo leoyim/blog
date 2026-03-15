@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<link rel="icon" href="favicon.ico">
+	<title>Love like Stars</title>
+	<meta charset="utf-8">
+	<style>
+		body {
+			background-color: #000;
+			margin: 0;
+			padding: 0;
+		}
+		canvas {
+			display: block;
+			margin: 0 auto;
+		}
+		#timer {
+			position: fixed;
+			top: 50%;
+			left: 50%;
+			transform: translate(-50%, -50%);
+			background-color: rgba(0, 0, 0, 0.5);
+			color: #FFF;
+			text-align: center;
+			padding: 10px 10px;
+			font-family: Arial;
+			font-size: 36px;
+			border-radius: 15px;
+			border: 3px solid rgb(238, 228, 255);
+			box-shadow: 0px 0px 30px rgb(92, 1, 251),0px 0px 20px rgb(95, 3, 255) inset;
+		}
+		@font-face {
+			font-family: loveisfree;
+			src: url("http://image.leoyim.cn/Straphanger-1.otf");
+		}
+		@font-face {
+			font-family: rainbow;
+			src: url("http://image.leoyim.cn/Handwritten-English-2.ttf");
+		}
+		day,times {
+			font-family: rainbow;
+			font-size: 72px;
+		}
+		day{
+			color: #ffdfdf;
+			text-shadow:
+				0 0 0.2em red,
+				0 0 0.4em #f00,
+				0 0 0.6em #ff0000,
+				0 0 0.8em #ff5050,
+				0 0 1em #ff7f7f;
+		}
+		times {
+			color: rgb(207, 255, 239);
+			text-shadow:
+				0 0 0.2em #0fa,
+				0 0 0.4em #0fa,
+				0 0 0.6em #0fa,
+				0 0 0.8em rgb(156, 246, 216),
+				0 0 1em rgb(156, 246, 216);
+		}
+
+		.love{
+			position: fixed;
+			bottom: 0;
+			left: 0;
+			width: 100%;
+			padding: 20px;
+			color: white;
+			text-align: center;
+			font-family: loveisfree;
+			font-weight: bold;
+		}
+        .heart::before {
+            content: "💖";
+            position: absolute;
+            top: 0;
+            left: 0;
+            font-size: 18px;
+        }
+        .heart {
+            position: absolute;
+            left: 0;
+            top: 0;
+            animation: heart 1s ease-out forwards;
+        }
+        @keyframes heart {
+            0% {
+                transform: scale(0);
+                opacity: 0;
+            }
+            30% {
+                transform: scale(1);
+                opacity: 1;
+            }
+            50% {
+                transform: scale(1.5);
+                opacity: 0.5;
+            }
+            100% {
+                transform: scale(2);
+                opacity: 0;
+            }
+        }
+	</style>
+</head>
+<body>
+<div id="timer"></div>
+<canvas id="canvas"></canvas>
+<div class="love"><span> I💖U, MengYu <span><br><span>- Begin 2023-06-08, End Forever -</span></div>
+<audio id="bg-music" loop>
+	<source src="rsdxzmm.mp3" type="audio/mp3">
+</audio>  
+<script>
+
+	//点击屏幕播放背景音乐
+    const audio = document.getElementById('bg-music')
+	document.addEventListener('click', function(event) {
+		var heart = document.createElement("div");
+		heart.classList.add("heart");
+		heart.style.left = event.clientX + "px";
+		heart.style.top = event.clientY + "px";
+		document.body.appendChild(heart);
+		setTimeout(function() {
+			heart.remove();
+		}, 1000); // 1秒后移除♥
+		audio.play();
+	});
+
+	//获取画布
+	var canvas = document.getElementById("canvas");
+	var context = canvas.getContext("2d");
+
+	//设置画布大小
+	canvas.width = window.innerWidth;
+	canvas.height = window.innerHeight;
+
+	//创建星星数组
+	var stars = [];
+
+	//创建流星数组
+	var meteors = [];
+
+	//创建计时器
+	var startTime = new Date("2023-06-08T22:08:00").getTime();
+
+	//创建夜空背景
+	function drawSky() {
+		context.fillStyle = "#000";
+		context.fillRect(0, 0, canvas.width, canvas.height);
+	}
+
+	//创建星星
+	function createStar() {
+		var star = {
+			x: Math.random() * canvas.width,
+			y: Math.random() * canvas.height,
+			size: Math.random() * 3 + 1,
+			brightness: Math.random() * 0.5 + 0.5,
+			blink: Math.random() * 10 + 5
+		};
+		stars.push(star);
+        if(stars.length > 521){
+            stars.splice(0,24)
+        }
+	}
+
+    //创建流星
+    function createMeteor() {
+        if (meteors.length < 3) {
+            var meteor = {
+                x: Math.random() * canvas.width,
+                y: Math.random() * canvas.height,
+                speed: Math.random() * 10 + 5,
+                length: Math.random() * 80 + 20,
+                angle: Math.random() * Math.PI / 2 + Math.PI / 4,
+                trail: [],
+                arcRadius: Math.random() * 100 + 50,
+                arcAngle: 0
+            };
+            meteors.push(meteor);
+        }
+    }
+
+	//绘制星星
+	function drawStars() {
+		for (var i = 0; i < stars.length; i++) {
+			var star = stars[i];
+			context.beginPath();
+			context.arc(star.x, star.y, star.size, 0, Math.PI * 2);
+			context.closePath();
+			context.fillStyle = "rgba(255, 255, 255, " + star.brightness + ")";
+			context.fill();
+
+			//闪烁效果
+			star.blink--;
+			if (star.blink <= 0) {
+				star.brightness = Math.random() * 0.5 + 0.5;
+				star.blink = Math.random() * 10 + 5;
+			}
+		}
+	}
+
+    //绘制流星
+    function drawMeteors() {
+        for (var i = 0; i < meteors.length; i++) {
+            var meteor = meteors[i];
+
+            meteor.arcAngle += meteor.speed / meteor.arcRadius;
+
+            meteor.x += Math.cos(meteor.angle) * meteor.speed;
+            meteor.y += Math.sin(meteor.angle) * meteor.speed;
+
+            meteor.trail.push({ x: meteor.x, y: meteor.y });
+
+            if (meteor.trail.length > meteor.length) {
+                meteor.trail.shift();
+            }
+
+            if (meteor.arcAngle >= Math.PI) {
+                meteors.splice(i, 1);
+                i--;
+                continue;
+            }
+
+            context.beginPath();
+            context.moveTo(meteor.trail[0].x, meteor.trail[0].y);
+
+            for (var j = 1; j < meteor.trail.length; j++) {
+                context.lineTo(meteor.trail[j].x, meteor.trail[j].y);
+            }
+
+            var gradient = context.createLinearGradient(meteor.x, meteor.y, meteor.trail[0].x, meteor.trail[0].y);
+            gradient.addColorStop(0, "rgba(255, 255, 255, 1)");
+            gradient.addColorStop(1, "rgba(255, 255, 255, 0)");
+
+            context.strokeStyle = gradient;
+            context.lineWidth = 1;
+            context.stroke();
+        }
+    }
+
+	//更新计时器
+	function updateTimer() {
+		var currentTime = new Date().getTime();
+		var timeDiff = currentTime - startTime;
+		var seconds = Math.floor(timeDiff / 1000);
+		var minutes = Math.floor(seconds / 60);
+		var hours = Math.floor(minutes / 60);
+		var days = Math.floor(hours / 24);
+		hours %= 24;
+		minutes %= 60;
+		seconds %= 60;
+
+		var timer = document.getElementById("timer");
+		timer.innerHTML = "<day>" + days + "</day> <times>" + hours + ":" + minutes + ":" + seconds + "</times>";
+	}
+
+	//循环绘制
+	function loop() {
+		//清空画布
+		context.clearRect(0, 0, canvas.width, canvas.height);
+
+		//绘制夜空背景
+		drawSky();
+
+		//随机生成星星
+		if (Math.random() < 0.05) {
+			createStar();
+		}
+
+		//随机生成流星
+		if (Math.random() < 0.05) {
+			createMeteor();
+		}
+
+		//绘制星星
+		drawStars();
+
+		//绘制流星
+		drawMeteors();
+
+		//更新计时器
+		updateTimer();
+
+		//循环绘制
+		requestAnimationFrame(loop);
+	}
+
+	//启动循环绘制
+	loop();
+</script>
+</body>
+</html>

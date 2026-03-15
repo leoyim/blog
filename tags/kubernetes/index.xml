@@ -1,8 +1,8 @@
 <rss xmlns:atom="http://www.w3.org/2005/Atom" version="2.0">
     <channel>
-        <title>kubernetes - 标签 - LeoYim&#39;s Note</title>
+        <title>kubernetes - 标签 - LeoYim&#39;s Blog</title>
         <link>http://leoyim.cn/tags/kubernetes/</link>
-        <description>kubernetes - 标签 - LeoYim&#39;s Note</description>
+        <description>kubernetes - 标签 - LeoYim&#39;s Blog</description>
         <generator>Hugo -- gohugo.io</generator><language>zh-CN</language><managingEditor>leo.yanwb@outlook.com (leoyim)</managingEditor>
             <webMaster>leo.yanwb@outlook.com (leoyim)</webMaster><copyright>This work is licensed under a Creative Commons Attribution-NonCommercial 4.0 International License.</copyright><lastBuildDate>Fri, 12 Jul 2024 09:55:25 &#43;0800</lastBuildDate><atom:link href="http://leoyim.cn/tags/kubernetes/" rel="self" type="application/rss+xml" /><item>
     <title>通过Kubeconfig文件生成X509证书</title>

@@ -1,8 +1,8 @@
 <rss xmlns:atom="http://www.w3.org/2005/Atom" version="2.0">
     <channel>
-        <title>golang - 标签 - LeoYim&#39;s Note</title>
+        <title>golang - 标签 - LeoYim&#39;s Blog</title>
         <link>http://leoyim.cn/tags/golang/</link>
-        <description>golang - 标签 - LeoYim&#39;s Note</description>
+        <description>golang - 标签 - LeoYim&#39;s Blog</description>
         <generator>Hugo -- gohugo.io</generator><language>zh-CN</language><managingEditor>leo.yanwb@outlook.com (leoyim)</managingEditor>
             <webMaster>leo.yanwb@outlook.com (leoyim)</webMaster><copyright>This work is licensed under a Creative Commons Attribution-NonCommercial 4.0 International License.</copyright><lastBuildDate>Sat, 09 Sep 2023 09:28:29 &#43;0800</lastBuildDate><atom:link href="http://leoyim.cn/tags/golang/" rel="self" type="application/rss+xml" /><item>
     <title>Golang 基础知识笔记</title>

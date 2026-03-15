@@ -1,8 +1,8 @@
 <rss xmlns:atom="http://www.w3.org/2005/Atom" version="2.0">
     <channel>
-        <title>Webassembly - 标签 - LeoYim&#39;s Note</title>
+        <title>Webassembly - 标签 - LeoYim&#39;s Blog</title>
         <link>http://leoyim.cn/tags/webassembly/</link>
-        <description>Webassembly - 标签 - LeoYim&#39;s Note</description>
+        <description>Webassembly - 标签 - LeoYim&#39;s Blog</description>
         <generator>Hugo -- gohugo.io</generator><language>zh-CN</language><managingEditor>leo.yanwb@outlook.com (leoyim)</managingEditor>
             <webMaster>leo.yanwb@outlook.com (leoyim)</webMaster><copyright>This work is licensed under a Creative Commons Attribution-NonCommercial 4.0 International License.</copyright><lastBuildDate>Fri, 23 Dec 2022 16:11:45 &#43;0800</lastBuildDate><atom:link href="http://leoyim.cn/tags/webassembly/" rel="self" type="application/rss+xml" /><item>
     <title>Webassembly 入门</title>
