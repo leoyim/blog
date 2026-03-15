@@ -1,0 +1,280 @@
+<rss xmlns:atom="http://www.w3.org/2005/Atom" version="2.0">
+    <channel>
+        <title>Docker - 标签 - LeoYim&#39;s Note</title>
+        <link>http://leoyim.cn/tags/docker/</link>
+        <description>Docker - 标签 - LeoYim&#39;s Note</description>
+        <generator>Hugo -- gohugo.io</generator><language>zh-CN</language><managingEditor>leo.yanwb@outlook.com (leoyim)</managingEditor>
+            <webMaster>leo.yanwb@outlook.com (leoyim)</webMaster><copyright>This work is licensed under a Creative Commons Attribution-NonCommercial 4.0 International License.</copyright><lastBuildDate>Fri, 06 Sep 2024 22:10:40 &#43;0800</lastBuildDate><atom:link href="http://leoyim.cn/tags/docker/" rel="self" type="application/rss+xml" /><item>
+    <title>Docker备忘清单</title>
+    <link>http://leoyim.cn/docker-cheat-sheet/</link>
+    <pubDate>Fri, 06 Sep 2024 22:10:40 &#43;0800</pubDate>
+    <author>作者</author>
+    <guid>http://leoyim.cn/docker-cheat-sheet/</guid>
+    <description><![CDATA[<p>本文记录了Docker的常用命令</p>
+<ol>
+<li>
+<p>获取 Docker 帮助信息</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-shell" data-lang="shell">docker --help
+</code></pre></td></tr></table>
+</div>
+</div></li>
+<li>
+<p>获取 Docker 版本号</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-shell" data-lang="shell">docker version
+</code></pre></td></tr></table>
+</div>
+</div></li>
+<li>
+<p>从远程仓库下载指定的镜像到本地</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-shell" data-lang="shell">docker pull &lt;image&gt;
+</code></pre></td></tr></table>
+</div>
+</div></li>
+<li>
+<p>根据 Dockerfile 构建一个新的镜像</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback">docker build -t &lt;image&gt; -f &lt;dockerfile&gt; .
+</code></pre></td></tr></table>
+</div>
+</div></li>
+<li>
+<p>列出本地已下载的镜像列表</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-shell" data-lang="shell">docker images
+</code></pre></td></tr></table>
+</div>
+</div></li>
+<li>
+<p>列出正在运行的容器</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-shell" data-lang="shell">docker ps
+<span class="c1"># 列出所有容器（包括已停止的容器）</span>
+docker ps -a
+</code></pre></td></tr></table>
+</div>
+</div></li>
+<li>
+<p>启动一个已停止的容器</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-shell" data-lang="shell">docker start &lt;container&gt;
+</code></pre></td></tr></table>
+</div>
+</div></li>
+<li>
+<p>停止一个正在运行的容器</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback">docker stop &lt;container&gt;
+</code></pre></td></tr></table>
+</div>
+</div></li>
+<li>
+<p>重启一个容器</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-shell" data-lang="shell">docker restart &lt;container&gt;
+</code></pre></td></tr></table>
+</div>
+</div></li>
+<li>
+<p>在正在运行的容器中执行命令</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-shell" data-lang="shell">docker <span class="nb">exec</span> &lt;container&gt; &lt;command&gt;
+</code></pre></td></tr></table>
+</div>
+</div></li>
+<li>
+<p>删除指定的容器</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-shell" data-lang="shell">docker rm &lt;container&gt;
+</code></pre></td></tr></table>
+</div>
+</div></li>
+<li>
+<p>删除指定的镜像名</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-shell" data-lang="shell">docker rmi &lt;image&gt;
+</code></pre></td></tr></table>
+</div>
+</div></li>
+<li>
+<p>将镜像转换为压缩文件</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-shell" data-lang="shell">docker save -o &lt;tar&gt; &lt;image&gt;
+</code></pre></td></tr></table>
+</div>
+</div></li>
+<li>
+<p>将压缩文件转换为镜像</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-shell" data-lang="shell">docker load -i &lt;tar&gt;
+</code></pre></td></tr></table>
+</div>
+</div></li>
+<li>
+<p>将容器快照保存为新的镜像</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-shell" data-lang="shell">docker commit &lt;container&gt; &lt;image&gt;
+</code></pre></td></tr></table>
+</div>
+</div></li>
+<li>
+<p>获取Docker对象(容器、镜像、网络、数据卷等)的低级配置和状态信息</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-shell" data-lang="shell">docker inspect &lt;image&gt;<span class="p">|</span>&lt;container&gt;<span class="p">|</span>&lt;volume&gt;<span class="p">|</span>&lt;network&gt;
+</code></pre></td></tr></table>
+</div>
+</div></li>
+<li>
+<p>用于在容器与主机之间的复制文件或目录</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-shell" data-lang="shell"><span class="c1"># 容器 -&gt; 主机</span>
+docker cp &lt;container&gt;:&lt;containerfilePath&gt; &lt;localFilePath&gt;
+<span class="c1"># 主机 -&gt; 容器</span>
+docker cp &lt;localFilePath&gt; &lt;container&gt;:&lt;containerfilePath&gt;
+</code></pre></td></tr></table>
+</div>
+</div></li>
+<li>
+<p>显示Docker主机系统相关信息</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-shell" data-lang="shell">docker system info
+</code></pre></td></tr></table>
+</div>
+</div></li>
+<li>
+<p>显示Docker使用空间情况的系统报告</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-shell" data-lang="shell">docker system df
+</code></pre></td></tr></table>
+</div>
+</div></li>
+<li>
+<p>查找Docker Hub上的镜像</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-shell" data-lang="shell">docker search ubuntu
+</code></pre></td></tr></table>
+</div>
+</div></li>
+<li>
+<p>查看容器日志</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-shell" data-lang="shell">docker logs &lt;container&gt;
+</code></pre></td></tr></table>
+</div>
+</div></li>
+<li>
+<p>给镜像创建一个标签</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-shell" data-lang="shell">docker tag &lt;image&gt; &lt;tag&gt;
+</code></pre></td></tr></table>
+</div>
+</div></li>
+<li>
+<p>运行一个镜像</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-shell" data-lang="shell">docker run -name &lt;container&gt; &lt;image&gt;
+</code></pre></td></tr></table>
+</div>
+</div></li>
+</ol>]]></description>
+</item></channel>
+</rss>

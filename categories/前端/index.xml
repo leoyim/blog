@@ -1,0 +1,16 @@
+<rss xmlns:atom="http://www.w3.org/2005/Atom" version="2.0">
+    <channel>
+        <title>前端 - 分类 - LeoYim&#39;s Note</title>
+        <link>http://leoyim.cn/categories/%E5%89%8D%E7%AB%AF/</link>
+        <description>前端 - 分类 - LeoYim&#39;s Note</description>
+        <generator>Hugo -- gohugo.io</generator><language>zh-CN</language><managingEditor>leo.yanwb@outlook.com (leoyim)</managingEditor>
+            <webMaster>leo.yanwb@outlook.com (leoyim)</webMaster><copyright>This work is licensed under a Creative Commons Attribution-NonCommercial 4.0 International License.</copyright><lastBuildDate>Fri, 23 Dec 2022 16:11:45 &#43;0800</lastBuildDate><atom:link href="http://leoyim.cn/categories/%E5%89%8D%E7%AB%AF/" rel="self" type="application/rss+xml" /><item>
+    <title>Webassembly 入门</title>
+    <link>http://leoyim.cn/what-is-webassembly/</link>
+    <pubDate>Fri, 23 Dec 2022 16:11:45 &#43;0800</pubDate>
+    <author>作者</author>
+    <guid>http://leoyim.cn/what-is-webassembly/</guid>
+    <description><![CDATA[<p>题图源：<a href="https://webassembly.org/" title="WebAssembly" target="_blank" rel="noopener noreffer">WebAssembly</a></p>
+]]></description>
+</item></channel>
+</rss>

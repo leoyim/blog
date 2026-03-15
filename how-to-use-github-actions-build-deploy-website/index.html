@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="robots" content="noodp" />
+        <meta http-equiv="X-UA-Compatible" content="IE=edge, chrome=1">
+        <title>如何使用GitHub Actions构建并部署网站 - LeoYim&#39;s Note</title><meta name="Description" content="记录使用GitHub Actions自动化构建和部署我的博客"><meta property="og:title" content="如何使用GitHub Actions构建并部署网站" />
+<meta property="og:description" content="记录使用GitHub Actions自动化构建和部署我的博客" />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="http://leoyim.cn/how-to-use-github-actions-build-deploy-website/" /><meta property="og:image" content="http://leoyim.cn/how-to-use-github-actions-build-deploy-website/github-actions-thumbnail-min.png"/><meta property="article:section" content="posts" />
+<meta property="article:published_time" content="2022-12-23T15:47:22+08:00" />
+<meta property="article:modified_time" content="2022-12-23T15:47:22+08:00" />
+
+<meta name="twitter:card" content="summary_large_image"/>
+<meta name="twitter:image" content="http://leoyim.cn/how-to-use-github-actions-build-deploy-website/github-actions-thumbnail-min.png"/>
+<meta name="twitter:title" content="如何使用GitHub Actions构建并部署网站"/>
+<meta name="twitter:description" content="记录使用GitHub Actions自动化构建和部署我的博客"/>
+<meta name="application-name" content="LeoYim">
+<meta name="apple-mobile-web-app-title" content="LeoYim"><meta name="theme-color" content="#ffffff"><meta name="msapplication-TileColor" content="#da532c"><link rel="icon" href="http://image.leoyim.cn/image/2023/09/09/wu_1h9rurd3l9m86tliluteso9q6.png"><link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png"><link rel="mask-icon" href="/safari-pinned-tab.svg" color="#5bbad5"><link rel="manifest" href="/site.webmanifest"><link rel="canonical" href="http://leoyim.cn/how-to-use-github-actions-build-deploy-website/" /><link rel="prev" href="http://leoyim.cn/kubernetes-cheat-sheet/" /><link rel="next" href="http://leoyim.cn/what-is-webassembly/" /><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/normalize.css@8.0.1/normalize.min.css"><link rel="stylesheet" href="/css/style.min.be9e646e2ceba6d54850a8e218d99993.css" integrity="md5-vp5kbizrptVIUKjiGNmZkw=="><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@5.13.0/css/all.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/animate.css@3.7.2/animate.min.css"><script type="application/ld+json">
+    {
+        "@context": "http://schema.org",
+        "@type": "BlogPosting",
+        "headline": "如何使用GitHub Actions构建并部署网站",
+        "inLanguage": "zh-CN",
+        "mainEntityOfPage": {
+            "@type": "WebPage",
+            "@id": "http:\/\/leoyim.cn\/how-to-use-github-actions-build-deploy-website\/"
+        },"image": [{
+                            "@type": "ImageObject",
+                            "url": "http:\/\/leoyim.cn\/how-to-use-github-actions-build-deploy-website\/github-actions-thumbnail-min.png",
+                            "width":  1024 ,
+                            "height":  538 
+                        }],"genre": "posts","keywords": "GitHub Actions","wordcount":  976 ,
+        "url": "http:\/\/leoyim.cn\/how-to-use-github-actions-build-deploy-website\/","datePublished": "2022-12-23T15:47:22+08:00","dateModified": "2022-12-23T15:47:22+08:00","license": "This work is licensed under a Creative Commons Attribution-NonCommercial 4.0 International License.","publisher": {
+            "@type": "Organization",
+            "name": "leoyim","logo": "http:\/\/tvax1.sinaimg.cn\/large\/006aCS7gly1gupodmjm55j60cs0cswen02.jpg"},"author": {
+                "@type": "Person",
+                "name": "LeoYim"
+            },"description": "记录使用GitHub Actions自动化构建和部署我的博客"
+    }
+    </script></head>
+    <body header-desktop="fixed" header-mobile="auto"><script type="text/javascript">(window.localStorage && localStorage.getItem('theme') ? localStorage.getItem('theme') === 'dark' : ('auto' === 'auto' ? window.matchMedia('(prefers-color-scheme: dark)').matches : 'auto' === 'dark')) && document.body.setAttribute('theme', 'dark');</script>
+
+        <div id="mask"></div><div class="wrapper"><header class="desktop" id="header-desktop">
+    <div class="header-wrapper">
+        <div class="header-title">
+            <a href="/" title="LeoYim&#39;s Note"><span class="header-title-pre"><i class='fab fa-pied-piper-alt'></i></span>JingShui</a>
+        </div>
+        <div class="menu">
+            <div class="menu-inner"><a class="menu-item" href="/posts/"> 所有文章 </a><a class="menu-item" href="/tags/"> 标签 </a><a class="menu-item" href="/categories/"> 分类 </a><a class="menu-item" href="/about/"> 关于 </a><a class="menu-item" href="/memos.html"> 记录 </a><a class="menu-item" href="https://github.com/leoyim" title="GitHub" rel="noopener noreffer" target="_blank"><i class='fab fa-github fa-fw'></i>  </a><span class="menu-item delimiter"></span><span class="menu-item search" id="search-desktop">
+                        <input type="text" placeholder="搜索文章标题或内容..." id="search-input-desktop">
+                        <a href="javascript:void(0);" class="search-button search-toggle" id="search-toggle-desktop" title="搜索">
+                            <i class="fas fa-search fa-fw"></i>
+                        </a>
+                        <a href="javascript:void(0);" class="search-button search-clear" id="search-clear-desktop" title="清空">
+                            <i class="fas fa-times-circle fa-fw"></i>
+                        </a>
+                        <span class="search-button search-loading" id="search-loading-desktop">
+                            <i class="fas fa-spinner fa-fw fa-spin"></i>
+                        </span>
+                    </span><a href="javascript:void(0);" class="menu-item theme-switch" title="切换主题">
+                    <i class="fas fa-adjust fa-fw"></i>
+                </a>
+            </div>
+        </div>
+    </div>
+</header><header class="mobile" id="header-mobile">
+    <div class="header-container">
+        <div class="header-wrapper">
+            <div class="header-title">
+                <a href="/" title="LeoYim&#39;s Note"><span class="header-title-pre"><i class='fab fa-pied-piper-alt'></i></span>JingShui</a>
+            </div>
+            <div class="menu-toggle" id="menu-toggle-mobile">
+                <span></span><span></span><span></span>
+            </div>
+        </div>
+        <div class="menu" id="menu-mobile"><div class="search-wrapper">
+                    <div class="search mobile" id="search-mobile">
+                        <input type="text" placeholder="搜索文章标题或内容..." id="search-input-mobile">
+                        <a href="javascript:void(0);" class="search-button search-toggle" id="search-toggle-mobile" title="搜索">
+                            <i class="fas fa-search fa-fw"></i>
+                        </a>
+                        <a href="javascript:void(0);" class="search-button search-clear" id="search-clear-mobile" title="清空">
+                            <i class="fas fa-times-circle fa-fw"></i>
+                        </a>
+                        <span class="search-button search-loading" id="search-loading-mobile">
+                            <i class="fas fa-spinner fa-fw fa-spin"></i>
+                        </span>
+                    </div>
+                    <a href="javascript:void(0);" class="search-cancel" id="search-cancel-mobile">
+                        取消
+                    </a>
+                </div><a class="menu-item" href="/posts/" title="">所有文章</a><a class="menu-item" href="/tags/" title="">标签</a><a class="menu-item" href="/categories/" title="">分类</a><a class="menu-item" href="/about/" title="">关于</a><a class="menu-item" href="/memos.html" title="">记录</a><a class="menu-item" href="https://github.com/leoyim" title="GitHub" rel="noopener noreffer" target="_blank"><i class='fab fa-github fa-fw'></i></a><a href="javascript:void(0);" class="menu-item theme-switch" title="切换主题">
+                <i class="fas fa-adjust fa-fw"></i>
+            </a></div>
+    </div>
+    <script>(function(i,s,o,g,r,a,m){i["DaoVoiceObject"]=r;i[r]=i[r]||function(){(i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;a.charset="utf-8";m.parentNode.insertBefore(a,m)})(window,document,"script",('https:' == document.location.protocol ? 'https:' : 'http:') + "//widget.daovoice.io/widget/b3166d69.js","daovoice")</script>
+</header>
+<div class="search-dropdown desktop">
+    <div id="search-dropdown-desktop"></div>
+</div>
+<div class="search-dropdown mobile">
+    <div id="search-dropdown-mobile"></div>
+</div><main class="main">
+                <div class="container"><div class="toc" id="toc-auto">
+            <h2 class="toc-title">目录</h2>
+            <div class="toc-content" id="toc-content-auto"></div>
+        </div><article class="page single"><h1 class="single-title animated flipInX">如何使用GitHub Actions构建并部署网站</h1><div class="post-meta">
+            <div class="post-meta-line"><span class="post-author"><a href="https://leoyim.cn" title="Author" target="_blank" rel="noopener noreffer author" class="author"><i class="fas fa-user-circle fa-fw"></i>LeoYim</a></span>&nbsp;<span class="post-category">收录于 <a href="/categories/%E6%8C%81%E7%BB%AD%E4%BA%A4%E4%BB%98/"><i class="far fa-folder fa-fw"></i>持续交付</a></span></div>
+            <div class="post-meta-line"><i class="far fa-calendar-alt fa-fw"></i>&nbsp;<time datetime="2022-12-23">2022-12-23</time>&nbsp;<i class="fas fa-pencil-alt fa-fw"></i>&nbsp;约 976 字&nbsp;
+                <i class="far fa-clock fa-fw"></i>&nbsp;预计阅读 2 分钟&nbsp;</div>
+        </div><div class="featured-image"><img
+        class="lazyload"
+        src="/svg/loading.min.svg"
+        data-src="/how-to-use-github-actions-build-deploy-website/github-actions-thumbnail-min.png"
+        data-srcset="/how-to-use-github-actions-build-deploy-website/github-actions-thumbnail-min.png, /how-to-use-github-actions-build-deploy-website/github-actions-thumbnail-min.png 1.5x, /how-to-use-github-actions-build-deploy-website/github-actions-thumbnail-min.png 2x"
+        data-sizes="auto"
+        alt="/how-to-use-github-actions-build-deploy-website/github-actions-thumbnail-min.png"
+        title="记录使用GitHub Actions自动化构建和部署我的博客" /></div><div class="details toc" id="toc-static"  kept="">
+                <div class="details-summary toc-title">
+                    <span>目录</span>
+                    <span><i class="details-icon fas fa-angle-right"></i></span>
+                </div>
+                <div class="details-content toc-content" id="toc-content-static"><nav id="TableOfContents">
+  <ul>
+    <li><a href="#heading"></a></li>
+  </ul>
+</nav></div>
+            </div><div class="content" id="content"><p>本文记录了作者是如何使用Github Actions完成本站的自动化构建与部署。</p>
+<p>题图源：<a href="https://gabrieltanner.org/blog/an-introduction-to-github-actions" title="an-introduction-to-github-actions" target="_blank" rel="noopener noreffer">an-introduction-to-github-actions</a></p>
+<hr>
+<blockquote>
+<p><a href="https://docs.github.com/zh/actions" target="_blank" rel="noopener noreffer">GitHub Actions</a> 是 <a href="https://github.com/" target="_blank" rel="noopener noreffer">GitHub</a> 提供的自动化工作流服务，可用于自动化构建、测试和部署软件项目。它允许开发者根据事件触发执行自定义任务，如提交代码时自动运行测试、定时任务等。通过简单的配置文件，即可实现CI/CD流程，提高开发效率并促进团队协作。</p>
+</blockquote>
+<p>本站采用GitHub Actions来完成自动化构建与发布，通过配置代码提交自动触发执行，每当将源码提交至Github仓库，便触发一次构建和发布，极大提升了构建与部署效率。</p>
+<h2 id="heading"></h2>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span><span class="lnt">21
+</span><span class="lnt">22
+</span><span class="lnt">23
+</span><span class="lnt">24
+</span><span class="lnt">25
+</span><span class="lnt">26
+</span><span class="lnt">27
+</span><span class="lnt">28
+</span><span class="lnt">29
+</span><span class="lnt">30
+</span><span class="lnt">31
+</span><span class="lnt">32
+</span><span class="lnt">33
+</span><span class="lnt">34
+</span><span class="lnt">35
+</span><span class="lnt">36
+</span><span class="lnt">37
+</span><span class="lnt">38
+</span><span class="lnt">39
+</span><span class="lnt">40
+</span><span class="lnt">41
+</span><span class="lnt">42
+</span><span class="lnt">43
+</span><span class="lnt">44
+</span><span class="lnt">45
+</span><span class="lnt">46
+</span><span class="lnt">47
+</span><span class="lnt">48
+</span><span class="lnt">49
+</span><span class="lnt">50
+</span><span class="lnt">51
+</span><span class="lnt">52
+</span><span class="lnt">53
+</span><span class="lnt">54
+</span><span class="lnt">55
+</span><span class="lnt">56
+</span><span class="lnt">57
+</span><span class="lnt">58
+</span><span class="lnt">59
+</span><span class="lnt">60
+</span><span class="lnt">61
+</span><span class="lnt">62
+</span><span class="lnt">63
+</span><span class="lnt">64
+</span><span class="lnt">65
+</span><span class="lnt">66
+</span><span class="lnt">67
+</span><span class="lnt">68
+</span><span class="lnt">69
+</span><span class="lnt">70
+</span><span class="lnt">71
+</span><span class="lnt">72
+</span><span class="lnt">73
+</span><span class="lnt">74
+</span><span class="lnt">75
+</span><span class="lnt">76
+</span><span class="lnt">77
+</span><span class="lnt">78
+</span><span class="lnt">79
+</span><span class="lnt">80
+</span><span class="lnt">81
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-yaml" data-lang="yaml"><span class="c"># This is a basic workflow to help you get started with Actions</span><span class="w">
+</span><span class="w">
+</span><span class="w"></span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l">CI</span><span class="w">
+</span><span class="w">
+</span><span class="w"></span><span class="c"># Controls when the workflow will run</span><span class="w">
+</span><span class="w"></span><span class="nt">on</span><span class="p">:</span><span class="w">
+</span><span class="w">  </span><span class="c"># Triggers the workflow on push or pull request events but only for the main branch</span><span class="w">
+</span><span class="w">  </span><span class="nt">push</span><span class="p">:</span><span class="w">
+</span><span class="w">    </span><span class="nt">branches</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="w"> </span><span class="l">main ]</span><span class="w">
+</span><span class="w">
+</span><span class="w"></span><span class="c"># A workflow run is made up of one or more jobs that can run sequentially or in parallel</span><span class="w">
+</span><span class="w"></span><span class="nt">jobs</span><span class="p">:</span><span class="w">
+</span><span class="w">  </span><span class="c"># This workflow contains a single job called &#34;build&#34;</span><span class="w">
+</span><span class="w">  </span><span class="nt">build</span><span class="p">:</span><span class="w">
+</span><span class="w">    </span><span class="c"># The type of runner that the job will run on</span><span class="w">
+</span><span class="w">    </span><span class="nt">runs-on</span><span class="p">:</span><span class="w"> </span><span class="l">ubuntu-latest</span><span class="w">
+</span><span class="w">
+</span><span class="w">    </span><span class="c"># Steps represent a sequence of tasks that will be executed as part of the job</span><span class="w">
+</span><span class="w">    </span><span class="nt">steps</span><span class="p">:</span><span class="w">
+</span><span class="w">
+</span><span class="w">      </span>- <span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l">安装 Go 1.17</span><span class="w">
+</span><span class="w">        </span><span class="nt">uses</span><span class="p">:</span><span class="w"> </span><span class="l">actions/setup-go@v1</span><span class="w">
+</span><span class="w">        </span><span class="nt">with</span><span class="p">:</span><span class="w">
+</span><span class="w">          </span><span class="nt">go-version</span><span class="p">:</span><span class="w"> </span><span class="m">1.17</span><span class="w">
+</span><span class="w">        </span><span class="nt">id</span><span class="p">:</span><span class="w"> </span><span class="l">go</span><span class="w">
+</span><span class="w">
+</span><span class="w">      </span>- <span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l">验证 Go 安装及版本</span><span class="w">
+</span><span class="w">        </span><span class="nt">run</span><span class="p">:</span><span class="w"> </span><span class="l">go version</span><span class="w">
+</span><span class="w">
+</span><span class="w">      </span><span class="c"># Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it</span><span class="w">
+</span><span class="w">      </span>- <span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l">签入项目源代码</span><span class="w">
+</span><span class="w">        </span><span class="nt">uses</span><span class="p">:</span><span class="w"> </span><span class="l">actions/checkout@v2</span><span class="w">
+</span><span class="w">
+</span><span class="w">      </span>- <span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l">安装 Hugo</span><span class="w">
+</span><span class="w">        </span><span class="nt">uses</span><span class="p">:</span><span class="w"> </span><span class="l">peaceiris/actions-hugo@v2</span><span class="w">
+</span><span class="w">        </span><span class="nt">with</span><span class="p">:</span><span class="w">
+</span><span class="w">          </span><span class="nt">hugo-version</span><span class="p">:</span><span class="w"> </span><span class="s1">&#39;0.88.1&#39;</span><span class="w">
+</span><span class="w">          </span><span class="nt">extended</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="w">
+</span><span class="w">
+</span><span class="w">      </span>- <span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l">验证 Hugo 安装及版本</span><span class="w">
+</span><span class="w">        </span><span class="nt">run</span><span class="p">:</span><span class="w"> </span><span class="l">hugo version</span><span class="w">
+</span><span class="w">
+</span><span class="w">      </span>- <span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l">编译 Hugo项目</span><span class="w">
+</span><span class="w">        </span><span class="nt">run</span><span class="p">:</span><span class="w"> </span><span class="l">hugo &amp;&amp; ls -lrt</span><span class="w">
+</span><span class="w">
+</span><span class="w">      </span>- <span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l">登录Docker Hub</span><span class="w">
+</span><span class="w">        </span><span class="nt">env</span><span class="p">:</span><span class="w">
+</span><span class="w">          </span><span class="nt">DOCKER_USERNAME</span><span class="p">:</span><span class="w"> </span><span class="l">${{secrets.DOCKER_USERNAME}}</span><span class="w">
+</span><span class="w">          </span><span class="nt">DOCKER_PASSWORD</span><span class="p">:</span><span class="w"> </span><span class="l">${{secrets.DOCKER_PASSWORD}}</span><span class="w">
+</span><span class="w">        </span><span class="nt">run</span><span class="p">:</span><span class="w"> </span><span class="l">docker version &amp;&amp; echo &#34;${DOCKER_PASSWORD}&#34; | docker login --username &#34;${DOCKER_USERNAME}&#34; --password-stdin</span><span class="w">
+</span><span class="w">
+</span><span class="w">      </span><span class="c"># - name: 安装buildx</span><span class="w">
+</span><span class="w">      </span><span class="c">#   uses: crazy-max/ghaction-docker-buildx@v1</span><span class="w">
+</span><span class="w">      </span><span class="c">#   with:</span><span class="w">
+</span><span class="w">      </span><span class="c">#     buildx-version: latest</span><span class="w">
+</span><span class="w">
+</span><span class="w">      </span>- <span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l">构建镜像并推送至DockerHub,再删除本地镜像</span><span class="w">
+</span><span class="w">        </span><span class="nt">env</span><span class="p">:</span><span class="w">
+</span><span class="w">          </span><span class="nt">DOCKER_USERNAME</span><span class="p">:</span><span class="w"> </span><span class="l">${{secrets.DOCKER_USERNAME}}</span><span class="w">
+</span><span class="w">        </span><span class="nt">run</span><span class="p">:</span><span class="w">
+</span><span class="w">          </span><span class="l">commitId=&#34;${{ github.event.commits[0].id }}&#34; &amp;&amp;</span><span class="w">
+</span><span class="w">          </span><span class="l">docker build --tag ${DOCKER_USERNAME}/blog:&#34;${commitId}&#34; . &amp;&amp;</span><span class="w">
+</span><span class="w">          </span><span class="l">docker images &amp;&amp;</span><span class="w">
+</span><span class="w">          </span><span class="l">docker push ${DOCKER_USERNAME}/blog:&#34;${commitId}&#34; &amp;&amp;</span><span class="w">
+</span><span class="w">          </span><span class="l">docker rmi ${DOCKER_USERNAME}/blog:&#34;${commitId}&#34;</span><span class="w">
+</span><span class="w">      
+</span><span class="w">      </span>- <span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l">容器更新部署到服务器</span><span class="w">
+</span><span class="w">        </span><span class="nt">env</span><span class="p">:</span><span class="w">
+</span><span class="w">          </span><span class="nt">DOCKER_REPO</span><span class="p">:</span><span class="w"> </span><span class="l">${{secrets.DOCKER_REPO}}</span><span class="w">
+</span><span class="w">        </span><span class="nt">uses</span><span class="p">:</span><span class="w"> </span><span class="l">appleboy/ssh-action@master</span><span class="w">
+</span><span class="w">        </span><span class="nt">with</span><span class="p">:</span><span class="w">
+</span><span class="w">          </span><span class="nt">host</span><span class="p">:</span><span class="w"> </span><span class="l">${{secrets.DEPLOY_HOST}}</span><span class="w">
+</span><span class="w">          </span><span class="nt">username</span><span class="p">:</span><span class="w"> </span><span class="l">${{secrets.DEPLOY_USER}}</span><span class="w">
+</span><span class="w">          </span><span class="nt">key</span><span class="p">:</span><span class="w"> </span><span class="l">${{secrets.DEPLOY_SECRET}}</span><span class="w">
+</span><span class="w">          </span><span class="nt">port</span><span class="p">:</span><span class="w"> </span><span class="l">${{secrets.DEPLOY_PORT}}</span><span class="w">
+</span><span class="w">          </span><span class="nt">script</span><span class="p">:</span><span class="w">
+</span><span class="w">            </span><span class="l">docker stop blog &amp;&amp;</span><span class="w">
+</span><span class="w">            </span><span class="l">docker rm blog &amp;&amp;</span><span class="w">
+</span><span class="w">            </span><span class="l">docker images | grep blog | awk &#39;{print $3}&#39; | xargs docker rmi &amp;&amp;</span><span class="w">
+</span><span class="w">            </span><span class="l">docker run -d --name blog -p 80:80 leoyim/blog:${{ github.event.commits[0].id }}</span><span class="w">
+</span><span class="w">            
+</span></code></pre></td></tr></table>
+</div>
+</div></div><div class="post-footer" id="post-footer">
+    <div class="post-info">
+        <div class="post-info-line">
+            <div class="post-info-mod">
+                <span>更新于 2022-12-23</span>
+            </div>
+            <div class="post-info-license"></div>
+        </div>
+        <div class="post-info-line">
+            <div class="post-info-md"></div>
+            <div class="post-info-share">
+                <span><a href="javascript:void(0);" title="分享到 Twitter" data-sharer="twitter" data-url="http://leoyim.cn/how-to-use-github-actions-build-deploy-website/" data-title="如何使用GitHub Actions构建并部署网站" data-hashtags="GitHub Actions"><i class="fab fa-twitter fa-fw"></i></a><a href="javascript:void(0);" title="分享到 Facebook" data-sharer="facebook" data-url="http://leoyim.cn/how-to-use-github-actions-build-deploy-website/" data-hashtag="GitHub Actions"><i class="fab fa-facebook-square fa-fw"></i></a><a href="javascript:void(0);" title="分享到 Pinterest" data-sharer="pinterest" data-url="http://leoyim.cn/how-to-use-github-actions-build-deploy-website/" data-description="记录使用GitHub Actions自动化构建和部署我的博客"><i class="fab fa-pinterest fa-fw"></i></a><a href="javascript:void(0);" title="分享到 Reddit" data-sharer="reddit" data-url="http://leoyim.cn/how-to-use-github-actions-build-deploy-website/"><i class="fab fa-reddit fa-fw"></i></a><a href="javascript:void(0);" title="分享到 Flipboard" data-sharer="flipboard" data-url="http://leoyim.cn/how-to-use-github-actions-build-deploy-website/" data-title="如何使用GitHub Actions构建并部署网站"><i class="fab fa-flipboard fa-fw"></i></a><a href="javascript:void(0);" title="分享到 微博" data-sharer="weibo" data-url="http://leoyim.cn/how-to-use-github-actions-build-deploy-website/" data-title="如何使用GitHub Actions构建并部署网站"><i class="fab fa-weibo fa-fw"></i></a><a href="javascript:void(0);" title="分享到 百度" data-sharer="baidu" data-url="http://leoyim.cn/how-to-use-github-actions-build-deploy-website/" data-title="如何使用GitHub Actions构建并部署网站"><i data-svg-src="https://cdn.jsdelivr.net/npm/simple-icons@2.14.0/icons/baidu.svg"></i></a><a href="javascript:void(0);" title="分享到 Evernote" data-sharer="evernote" data-url="http://leoyim.cn/how-to-use-github-actions-build-deploy-website/" data-title="如何使用GitHub Actions构建并部署网站"><i class="fab fa-evernote fa-fw"></i></a></span>
+            </div>
+        </div>
+    </div>
+
+    <div class="post-info-more">
+        <section class="post-tags"><i class="fas fa-tags fa-fw"></i>&nbsp;<a href="/tags/github-actions/">GitHub Actions</a></section>
+        <section>
+            <span><a href="javascript:void(0);" onclick="window.history.back();">返回</a></span>&nbsp;|&nbsp;<span><a href="/">主页</a></span>
+        </section>
+    </div>
+
+    <div class="post-nav"><a href="/kubernetes-cheat-sheet/" class="prev" rel="prev" title="Kubernetes备忘清单"><i class="fas fa-angle-left fa-fw"></i>Kubernetes备忘清单</a>
+            <a href="/what-is-webassembly/" class="next" rel="next" title="Webassembly 入门">Webassembly 入门<i class="fas fa-angle-right fa-fw"></i></a></div>
+</div>
+<div id="comments"><div id="disqus_thread" class="comment"></div><noscript>
+                Please enable JavaScript to view the comments powered by <a href="https://disqus.com/?ref_noscript">Disqus</a>.
+            </noscript></div></article></div>
+            </main><footer class="footer">
+        <div class="footer-container"><div class="footer-line">由 <a href="https://gohugo.io/" target="_blank" rel="noopener noreffer" title="Hugo 0.88.1">Hugo</a> 强力驱动 | 主题 - <a href="https://github.com/dillonzq/LoveIt" target="_blank" rel="noopener noreffer" title="LoveIt 0.2.10"><i class="far fa-kiss-wink-heart fa-fw"></i> LoveIt</a>
+                </div><div class="footer-line"><i class="far fa-copyright fa-fw"></i><span itemprop="copyrightYear">2019 - 2026</span><span class="author" itemprop="copyrightHolder">&nbsp;<a href="mailto:leo.yanwb@outlook.com" target="_blank">leoyim</a></span>&nbsp;|&nbsp;<span class="license"><a rel="license external nofollow noopener noreffer" href="https://creativecommons.org/licenses/by-nc/4.0/" target="_blank">CC BY-NC 4.0</a></span><span class="icp-splitter">&nbsp;|&nbsp;</span><br class="icp-br"/>
+                    <span class="icp"><a href='http://beian.miit.gov.cn/'>豫ICP备2023037428号-1</a></span></div>
+        </div>
+        <script>
+            daovoice('init', {
+            app_id: "b3166d69"
+            });
+            daovoice('update');
+        </script>
+    </footer></div>
+
+        <div id="fixed-buttons"><a href="#" id="back-to-top" class="fixed-button" title="回到顶部">
+                <i class="fas fa-arrow-up fa-fw"></i>
+            </a><a href="#" id="view-comments" class="fixed-button" title="查看评论">
+                <i class="fas fa-comment fa-fw"></i>
+            </a>
+        </div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/lightgallery.js@1.2.0/dist/css/lightgallery.min.css"><script type="text/javascript" src="https://polyfill.io/v3/polyfill.min.js?features=Array.prototype.fill%2CArray.prototype.find%2CArray.from%2CIntersectionObserver%2CMath.sign%2CObject.assign%2CPromise%2CObject.entries%2CElement.prototype.closest%2CrequestAnimationFrame%2CCustomEvent%2Chtml5shiv%2CObject.values%2Cfetch%2CElement.prototype.after"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/object-fit-images@3.2.4/dist/ofi.min.js"></script><script type="text/javascript" src="https://leoyim.disqus.com/embed.js" defer></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/smooth-scroll@16.1.3/dist/smooth-scroll.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/autocomplete.js@0.37.1/dist/autocomplete.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/algoliasearch@4.2.0/dist/algoliasearch-lite.umd.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/lazysizes@5.2.2/lazysizes.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/twemoji@13.0.0/dist/twemoji.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/lightgallery.js@1.2.0/dist/js/lightgallery.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/lg-thumbnail.js@1.2.0/dist/lg-thumbnail.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/lg-zoom.js@1.2.0/dist/lg-zoom.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/clipboard@2.0.6/dist/clipboard.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/sharer.js@0.4.0/sharer.min.js"></script><script type="text/javascript">window.config={"code":{"copyTitle":"复制到剪贴板","maxShownLines":1000},"comment":{},"lightGallery":{"actualSize":false,"exThumbImage":"data-thumbnail","hideBarsDelay":2000,"selector":".lightgallery","speed":400,"thumbContHeight":80,"thumbWidth":80,"thumbnail":true},"search":{"algoliaAppID":"YFBNEDZD4V","algoliaIndex":"index.zh-cn","algoliaSearchKey":"7ba668fbb896bf1350eb7d0fc3e4f394","highlightTag":"em","maxResultLength":10,"noResultsFound":"没有找到结果","snippetLength":50,"type":"algolia"},"twemoji":true};</script><script type="text/javascript" src="/js/theme.min.7bc7989e979c4a19d97db3ab311a80fe.js" integrity="md5-e8eYnpecShnZfbOrMRqA/g=="></script></body>
+</html>

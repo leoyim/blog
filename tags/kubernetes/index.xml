@@ -1,0 +1,1171 @@
+<rss xmlns:atom="http://www.w3.org/2005/Atom" version="2.0">
+    <channel>
+        <title>kubernetes - 标签 - LeoYim&#39;s Note</title>
+        <link>http://leoyim.cn/tags/kubernetes/</link>
+        <description>kubernetes - 标签 - LeoYim&#39;s Note</description>
+        <generator>Hugo -- gohugo.io</generator><language>zh-CN</language><managingEditor>leo.yanwb@outlook.com (leoyim)</managingEditor>
+            <webMaster>leo.yanwb@outlook.com (leoyim)</webMaster><copyright>This work is licensed under a Creative Commons Attribution-NonCommercial 4.0 International License.</copyright><lastBuildDate>Fri, 12 Jul 2024 09:55:25 &#43;0800</lastBuildDate><atom:link href="http://leoyim.cn/tags/kubernetes/" rel="self" type="application/rss+xml" /><item>
+    <title>通过Kubeconfig文件生成X509证书</title>
+    <link>http://leoyim.cn/based-kubeconfig-generic-x509-certificate/</link>
+    <pubDate>Fri, 12 Jul 2024 09:55:25 &#43;0800</pubDate>
+    <author>作者</author>
+    <guid>http://leoyim.cn/based-kubeconfig-generic-x509-certificate/</guid>
+    <description><![CDATA[<p>本文记录了从Kubernetes集群kubeconfig.yaml文件提取生成X509证书的方法。</p>
+<p>题图源：<a href="https://blog.stackademic.com/kubernetes-certificate-expiration-x509-792e48175967" target="_blank" rel="noopener noreffer">Kubernetes certificate expiration “X509”</a></p>
+<hr>
+<h2 id="1-查看kubeconfigyaml">1 查看kubeconfig.yaml</h2>
+<blockquote>
+<p>可以使用VSCode等文本编辑器打开kubeconfig.yaml文件，或者在终端使用cat, less或more命令查看具体内容。</p>
+</blockquote>
+<p>kubeconfig文件的结构通常包含一个或多个clusters部分，每个部分里有cluster、user和contexts等字段。X509证书通常存储在clusters下的cluster段落中的certificate-authority-data字段和users下的某个用户段落中的client-certificate-data及client-key-data字段，这些字段用于存储kubectl客户端与Kubernetes API服务器进行身份验证所需的凭据。</p>
+<ul>
+<li><strong>client-key</strong> 此字段存储客户端证书的私钥。客户端证书用于将 <code>kubectl</code>客户端验证到API服务器。私钥必须保密，因为它可用于冒充客户端。</li>
+<li><strong>client-certificate</strong> 此字段以PEM格式存储客户端证书。客户端证书用于将 <code>kubectl</code>客户端验证到API服务器。证书必须由受信任的证书颁发机构(CA)签名。</li>
+<li><strong>cluster-ca-certificate</strong> 此字段以PEM格式存储API服务器的CA证书。CA证书用于验证API服务器证书的真实性。CA 证书必须受kubectl客户端信任。</li>
+</ul>
+<div class="details admonition note open">
+        <div class="details-summary admonition-title">
+            <i class="icon fas fa-pencil-alt fa-fw"></i>注意<i class="details-icon fas fa-angle-right fa-fw"></i>
+        </div>
+        <div class="details-content">
+            <div class="admonition-content">client-key 和 client-certificate 字段应保密。cluster-ca-certificate 字段可以与他人共享，用于验证API服务器证书的真实性。</div>
+        </div>
+    </div>
+<h2 id="2-提取证书和密钥">2 提取证书和密钥</h2>
+<blockquote>
+<p>证书数据是以Base64编码的形式存储的。你可以使用以下命令来解码这些数据并将其保存为PEM文件：</p>
+</blockquote>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span><span class="lnt">5
+</span><span class="lnt">6
+</span><span class="lnt">7
+</span><span class="lnt">8
+</span><span class="lnt">9
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-sh" data-lang="sh"><span class="c1"># 提取集群CA证书到ca.crt</span>
+<span class="nb">echo</span> <span class="s2">&#34;</span><span class="k">$(</span>base64 -d <span class="o">&lt;&lt;&lt;</span> <span class="k">$(</span>grep <span class="s1">&#39;certificate-authority-data&#39;</span> kubeconfig.yaml <span class="p">|</span> awk <span class="s1">&#39;{print $2}&#39;</span><span class="k">))</span><span class="s2">&#34;</span> &gt; ca.crt
+
+<span class="c1"># 提取客户端证书到client.crt</span>
+<span class="nb">echo</span> <span class="s2">&#34;</span><span class="k">$(</span>base64 -d <span class="o">&lt;&lt;&lt;</span> <span class="k">$(</span>grep <span class="s1">&#39;client-certificate-data&#39;</span> kubeconfig.yaml <span class="p">|</span> awk <span class="s1">&#39;{print $2}&#39;</span><span class="k">))</span><span class="s2">&#34;</span> &gt; client.crt
+
+<span class="c1"># 提取客户端私钥到client.key</span>
+<span class="nb">echo</span> <span class="s2">&#34;</span><span class="k">$(</span>base64 -d <span class="o">&lt;&lt;&lt;</span> <span class="k">$(</span>grep <span class="s1">&#39;client-key-data&#39;</span> kubeconfig.yaml <span class="p">|</span> awk <span class="s1">&#39;{print $2}&#39;</span><span class="k">))</span><span class="s2">&#34;</span> &gt; client.key
+
+</code></pre></td></tr></table>
+</div>
+</div><h2 id="3-验证证书">3 验证证书</h2>
+<p>解码并保存后，你可以使用openssl命令行工具来验证生成的证书和私钥是否有效，这个命令会显示客户端证书的详细信息，包括有效期等。</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-sh" data-lang="sh">openssl x509 -in client.crt -text -noout
+</code></pre></td></tr></table>
+</div>
+</div>]]></description>
+</item><item>
+    <title>Kubernetes集群搭建部署实践</title>
+    <link>http://leoyim.cn/deploy-kubernetes-cluster-locally/</link>
+    <pubDate>Sat, 18 Nov 2023 10:13:11 &#43;0800</pubDate>
+    <author>作者</author>
+    <guid>http://leoyim.cn/deploy-kubernetes-cluster-locally/</guid>
+    <description><![CDATA[<p>本文记录了在作者本地使用三台CentOS虚拟机，搭建部署单Master双Slave Kubernetes集群。</p>
+<p>题图源：<a href="https://www.kosli.com/blog/understanding-your-kubernetes-deployment-lifecyclea-guide-with-examples-1/" target="_blank" rel="noopener noreffer">Understanding Your Kubernetes Deployment Lifecycle</a></p>
+<hr>
+<h2 id="1-系统准备">1 系统准备</h2>
+<p>搭建部署包含1个Master结点和2个Slave结点的Kubernetes集群，需要准备3台Linux虚拟机作为集群结点，可以通过VMware Worksation快速创建三台CentOS虚拟机。</p>
+<h3 id="11-工具安装">1.1 工具安装</h3>
+<ul>
+<li><i class="far fa-check-square fa-fw"></i> <a href="https://www.vmware.com/cn/products/workstation-pro.html" target="_blank" rel="noopener noreffer">WMware Workstation Pro 17</a></li>
+<li><i class="far fa-check-square fa-fw"></i> <a href="https://mirrors.tuna.tsinghua.edu.cn/centos/7.9.2009/isos/x86_64/CentOS-7-x86_64-Minimal-2009.iso" target="_blank" rel="noopener noreffer">CentOS-7-x86_64-Minimal-2009.iso</a></li>
+</ul>
+<h3 id="12-网络配置">1.2 网络配置</h3>
+<p>使用VMware工具本身的界面操作起来并不方便，对CentOS虚拟机固定IP后，可使虚拟机每次启动时IP不会发生变化，可以使用<code>XShell</code>或<code>Tabby</code>通过SSH访问虚拟机，进行后续的配置操作，会节省很多时间。</p>
+<p>此配置保证后续Kubernetes集群结点IP不会随意改变，这里不做过多介绍，具体可参考这篇文章：<a href="https://blog.csdn.net/jsryin/article/details/123304582" target="_blank" rel="noopener noreffer">Vmware虚拟机Linux配置固定IP地址（详细版）</a>。</p>
+<p>通过以上配置，在各个结点执行<code>ip addr</code>获取到三个结点的IP信息：</p>
+<blockquote>
+<p>192.168.198.129<br>
+192.168.198.130<br>
+192.168.198.131</p>
+</blockquote>
+<h3 id="13-centos系统配置">1.3 CentOS系统配置</h3>
+<h4 id="131-主机名配置">1.3.1 主机名配置</h4>
+<p>设置192.168.198.129主机名 apple</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash">hostnamectl set-hostname apple
+</code></pre></td></tr></table>
+</div>
+</div><p>设置192.168.198.130主机名 banana</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash">hostnamectl set-hostname banana
+</code></pre></td></tr></table>
+</div>
+</div><p>设置192.168.198.131主机名 cherry</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash">hostnamectl set-hostname cherry
+</code></pre></td></tr></table>
+</div>
+</div><h4 id="132-配置主机ip地址">1.3.2 配置主机IP地址</h4>
+<p>设置Apple IP地址为 192.168.198.129</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash">vim /etc/sysconfig/network-scripts/ifcfg-ens33
+
+<span class="nv">TYPE</span><span class="o">=</span><span class="s2">&#34;Ethernet&#34;</span>
+<span class="nv">PROXY_METHOD</span><span class="o">=</span><span class="s2">&#34;none&#34;</span>
+<span class="nv">BROWSER_ONLY</span><span class="o">=</span><span class="s2">&#34;no&#34;</span>
+<span class="nv">BOOTPROTO</span><span class="o">=</span><span class="s2">&#34;static&#34;</span>
+<span class="nv">DEFROUTE</span><span class="o">=</span><span class="s2">&#34;yes&#34;</span>
+<span class="nv">IPV4_FAILURE_FATAL</span><span class="o">=</span><span class="s2">&#34;no&#34;</span>
+<span class="nv">IPV6INIT</span><span class="o">=</span><span class="s2">&#34;yes&#34;</span>
+<span class="nv">IPV6_AUTOCONF</span><span class="o">=</span><span class="s2">&#34;yes&#34;</span>
+<span class="nv">IPV6_DEFROUTE</span><span class="o">=</span><span class="s2">&#34;yes&#34;</span>
+<span class="nv">IPV6_FAILURE_FATAL</span><span class="o">=</span><span class="s2">&#34;no&#34;</span>
+<span class="nv">IPV6_ADDR_GEN_MODE</span><span class="o">=</span><span class="s2">&#34;stable-privacy&#34;</span>
+<span class="nv">NAME</span><span class="o">=</span><span class="s2">&#34;ens33&#34;</span>
+<span class="nv">UUID</span><span class="o">=</span><span class="s2">&#34;529588ee-2c22-4dd4-99c1-c823fbf96642&#34;</span>
+<span class="nv">DEVICE</span><span class="o">=</span><span class="s2">&#34;ens33&#34;</span>
+<span class="nv">ONBOOT</span><span class="o">=</span><span class="s2">&#34;yes&#34;</span>
+<span class="nv">IPADDR</span><span class="o">=</span>192.168.198.129
+<span class="nv">GATEWAY</span><span class="o">=</span>192.168.198.2
+<span class="nv">NETMASK</span><span class="o">=</span>255.255.255.0
+</code></pre></td></tr></table>
+</div>
+</div><p>设置Banana IP地址为 192.168.198.130</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash">vim /etc/sysconfig/network-scripts/ifcfg-ens33
+
+<span class="nv">TYPE</span><span class="o">=</span><span class="s2">&#34;Ethernet&#34;</span>
+<span class="nv">PROXY_METHOD</span><span class="o">=</span><span class="s2">&#34;none&#34;</span>
+<span class="nv">BROWSER_ONLY</span><span class="o">=</span><span class="s2">&#34;no&#34;</span>
+<span class="nv">BOOTPROTO</span><span class="o">=</span><span class="s2">&#34;static&#34;</span>
+<span class="nv">DEFROUTE</span><span class="o">=</span><span class="s2">&#34;yes&#34;</span>
+<span class="nv">IPV4_FAILURE_FATAL</span><span class="o">=</span><span class="s2">&#34;no&#34;</span>
+<span class="nv">IPV6INIT</span><span class="o">=</span><span class="s2">&#34;yes&#34;</span>
+<span class="nv">IPV6_AUTOCONF</span><span class="o">=</span><span class="s2">&#34;yes&#34;</span>
+<span class="nv">IPV6_DEFROUTE</span><span class="o">=</span><span class="s2">&#34;yes&#34;</span>
+<span class="nv">IPV6_FAILURE_FATAL</span><span class="o">=</span><span class="s2">&#34;no&#34;</span>
+<span class="nv">IPV6_ADDR_GEN_MODE</span><span class="o">=</span><span class="s2">&#34;stable-privacy&#34;</span>
+<span class="nv">NAME</span><span class="o">=</span><span class="s2">&#34;ens33&#34;</span>
+<span class="nv">UUID</span><span class="o">=</span><span class="s2">&#34;529588ee-2c22-4dd4-99c1-c823fbf96642&#34;</span>
+<span class="nv">DEVICE</span><span class="o">=</span><span class="s2">&#34;ens33&#34;</span>
+<span class="nv">ONBOOT</span><span class="o">=</span><span class="s2">&#34;yes&#34;</span>
+<span class="nv">IPADDR</span><span class="o">=</span>192.168.198.130
+<span class="nv">GATEWAY</span><span class="o">=</span>192.168.198.2
+<span class="nv">NETMASK</span><span class="o">=</span>255.255.255.0
+</code></pre></td></tr></table>
+</div>
+</div><p>设置Cherry IP地址为 192.168.198.131</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash">vim /etc/sysconfig/network-scripts/ifcfg-ens33
+
+<span class="nv">TYPE</span><span class="o">=</span><span class="s2">&#34;Ethernet&#34;</span>
+<span class="nv">PROXY_METHOD</span><span class="o">=</span><span class="s2">&#34;none&#34;</span>
+<span class="nv">BROWSER_ONLY</span><span class="o">=</span><span class="s2">&#34;no&#34;</span>
+<span class="nv">BOOTPROTO</span><span class="o">=</span><span class="s2">&#34;static&#34;</span>
+<span class="nv">DEFROUTE</span><span class="o">=</span><span class="s2">&#34;yes&#34;</span>
+<span class="nv">IPV4_FAILURE_FATAL</span><span class="o">=</span><span class="s2">&#34;no&#34;</span>
+<span class="nv">IPV6INIT</span><span class="o">=</span><span class="s2">&#34;yes&#34;</span>
+<span class="nv">IPV6_AUTOCONF</span><span class="o">=</span><span class="s2">&#34;yes&#34;</span>
+<span class="nv">IPV6_DEFROUTE</span><span class="o">=</span><span class="s2">&#34;yes&#34;</span>
+<span class="nv">IPV6_FAILURE_FATAL</span><span class="o">=</span><span class="s2">&#34;no&#34;</span>
+<span class="nv">IPV6_ADDR_GEN_MODE</span><span class="o">=</span><span class="s2">&#34;stable-privacy&#34;</span>
+<span class="nv">NAME</span><span class="o">=</span><span class="s2">&#34;ens33&#34;</span>
+<span class="nv">UUID</span><span class="o">=</span><span class="s2">&#34;529588ee-2c22-4dd4-99c1-c823fbf96642&#34;</span>
+<span class="nv">DEVICE</span><span class="o">=</span><span class="s2">&#34;ens33&#34;</span>
+<span class="nv">ONBOOT</span><span class="o">=</span><span class="s2">&#34;yes&#34;</span>
+<span class="nv">IPADDR</span><span class="o">=</span>192.168.198.131
+<span class="nv">GATEWAY</span><span class="o">=</span>192.168.198.2
+<span class="nv">NETMASK</span><span class="o">=</span>255.255.255.0
+</code></pre></td></tr></table>
+</div>
+</div><h4 id="133-配置dns网络信息">1.3.3 配置DNS网络信息</h4>
+<blockquote>
+<p>在每个结点执行</p>
+</blockquote>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span><span class="lnt">5
+</span><span class="lnt">6
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="c1"># 缺少此配置可能无法访问外网</span>
+cat &gt;&gt; /etc/resolv.conf <span class="s">&lt;&lt; EOF
+</span><span class="s"># Generated by NetworkManager
+</span><span class="s">nameserver 8.8.8.8
+</span><span class="s">nameserver 114.114.114.114
+</span><span class="s">EOF</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>重启生效</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span><span class="lnt">5
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="c1"># 重启网络服务</span>
+systemctl restart network
+
+<span class="c1"># 验证网络</span>
+ping www.baidu.com
+</code></pre></td></tr></table>
+</div>
+</div><h4 id="134-配置主机名与ip地址解析">1.3.4 配置主机名与IP地址解析</h4>
+<blockquote>
+<p>在每个结点执行</p>
+</blockquote>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span><span class="lnt">5
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash">cat &gt;&gt; /etc/hosts <span class="s">&lt;&lt; EOF
+</span><span class="s">192.168.198.129 apple
+</span><span class="s">192.168.198.130 banana
+</span><span class="s">192.168.198.131 cherry
+</span><span class="s">EOF</span>
+</code></pre></td></tr></table>
+</div>
+</div><h4 id="135-防火墙配置">1.3.5 防火墙配置</h4>
+<blockquote>
+<p>在每个结点执行</p>
+</blockquote>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span><span class="lnt">5
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="c1"># 关闭防火墙</span>
+systemctl stop firewalld
+
+<span class="c1"># 禁止防火墙开机自启</span>
+systemctl disable firewalld
+</code></pre></td></tr></table>
+</div>
+</div><h4 id="136-selinux配置">1.3.6 SELinux配置</h4>
+<blockquote>
+<p>在每个结点执行，修改后需要重启</p>
+</blockquote>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span><span class="lnt">5
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="c1"># 永久关闭</span>
+sed -i <span class="s1">&#39;s/enforcing/disabled/&#39;</span> /etc/selinux/config
+
+<span class="c1">#临时关闭</span>
+setenforce <span class="m">0</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>重启生效</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash">reboot
+</code></pre></td></tr></table>
+</div>
+</div><h4 id="137-swap分区配置">1.3.7 swap分区配置</h4>
+<blockquote>
+<p>在每个结点执行，修改后需重启</p>
+</blockquote>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span><span class="lnt">5
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="c1"># 永久关闭</span>
+sed -ri <span class="s1">&#39;s/.*swap.*/#&amp;/&#39;</span> /etc/fstab
+
+<span class="c1"># 临时关闭</span>
+swapoff -a
+</code></pre></td></tr></table>
+</div>
+</div><p>重启生效</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash">reboot
+</code></pre></td></tr></table>
+</div>
+</div><h4 id="138-配置内核转发及网桥过滤">1.3.8 配置内核转发及网桥过滤</h4>
+<blockquote>
+<p>在每个结点执行</p>
+</blockquote>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span><span class="lnt">5
+</span><span class="lnt">6
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash">cat &gt; /etc/sysctl.d/k8s.conf <span class="s">&lt;&lt; EOF
+</span><span class="s">net.bridge.bridge-nf-call-ip6tables = 1
+</span><span class="s">net.bridge.bridge-nf-call-iptables = 1
+</span><span class="s">net.ipv4.ip_forward = 1
+</span><span class="s">vm.swappiness = 0
+</span><span class="s">EOF</span>
+</code></pre></td></tr></table>
+</div>
+</div><div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span><span class="lnt">5
+</span><span class="lnt">6
+</span><span class="lnt">7
+</span><span class="lnt">8
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="c1"># 加载br_netfilter模块</span>
+modprobe br_netfilter
+
+<span class="c1"># 查看是否加载</span>
+lsmod <span class="p">|</span> grep br_netfilter
+
+<span class="c1"># 生效</span>
+sysctl --system  
+</code></pre></td></tr></table>
+</div>
+</div><h4 id="139-时间同步配置">1.3.9 时间同步配置</h4>
+<blockquote>
+<p>在每个结点执行</p>
+</blockquote>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span><span class="lnt">5
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="c1"># 安装 ntpdate</span>
+yum install ntpdate -y
+
+<span class="c1"># 同步时间</span>
+ntpdate time.windows.com
+</code></pre></td></tr></table>
+</div>
+</div><h4 id="1310-ipvs配置">1.3.10 IPVS配置</h4>
+<blockquote>
+<p>在每个结点执行</p>
+</blockquote>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="c1"># 安装ipset和ipvsadm</span>
+yum -y install ipset ipvsadm
+
+cat &gt; /etc/sysconfig/modules/ipvs.modules <span class="s">&lt;&lt;EOF
+</span><span class="s">#!/bin/bash
+</span><span class="s">modprobe -- ip_vs
+</span><span class="s">modprobe -- ip_vs_rr
+</span><span class="s">modprobe -- ip_vs_wrr
+</span><span class="s">modprobe -- ip_vs_sh
+</span><span class="s">modprobe -- nf_conntrack_ipv4
+</span><span class="s">EOF</span>
+
+<span class="c1"># 添加执行权限</span>
+chmod <span class="m">755</span> /etc/sysconfig/modules/ipvs.modules
+
+<span class="c1"># 运行</span>
+bash /etc/sysconfig/modules/ipvs.modules
+
+<span class="c1"># 检查是否加载</span>
+lsmod <span class="p">|</span> grep -e ipvs -e nf_conntrack_ipv4
+</code></pre></td></tr></table>
+</div>
+</div><h4 id="1311-升级操作系统内核">1.3.11 升级操作系统内核</h4>
+<blockquote>
+<p>在每个结点执行，升级后需重启</p>
+</blockquote>
+<p>安装YUM源</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span><span class="lnt">5
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="c1"># 导入elrepo gpg key</span>
+rpm --import https://www.elrepo.org/RPM-GPG-KEY-elrepo.org
+
+<span class="c1"># 安装elrepo YUM源仓库</span>
+yum -y install https://www.elrepo.org/elrepo-release-7.0-4.el7.elrepo.noarch.rpm
+</code></pre></td></tr></table>
+</div>
+</div><p>升级内核版本</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="c1"># 稳定版kernel-ml 长期维护版本kernel-lt  </span>
+yum -y --enablerepo<span class="o">=</span>elrepo-kernel  install  kernel-ml
+
+<span class="c1"># 查看已安装的内核</span>
+rpm -qa <span class="p">|</span> grep kernel
+
+<span class="c1"># 查看默认内核</span>
+grubby --default-kernel
+
+<span class="c1"># 若不是最新版本时执行</span>
+grubby --set-default <span class="k">$(</span>ls /boot/vmlinuz-* <span class="p">|</span> grep elrepo<span class="k">)</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>重启生效</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash">reboot
+</code></pre></td></tr></table>
+</div>
+</div><p>至此，操作系统环境准备已完成，下一步可以进行Docker、容器运行时以及Kubernetes软件安装和配置！</p>
+<h3 id="14-创建快照">1.4 创建快照</h3>
+<div class="details admonition tip open">
+        <div class="details-summary admonition-title">
+            <i class="icon fas fa-lightbulb fa-fw"></i>技巧<i class="details-icon fas fa-angle-right fa-fw"></i>
+        </div>
+        <div class="details-content">
+            <div class="admonition-content"><i class="far fa-bookmark fa-fw"></i>&nbsp;在VMware对3台虚拟机创建一份快照，便于后续配置出现问题时回滚！</div>
+        </div>
+    </div>
+<div class="mermaid" id="id-1"></div>
+<h2 id="2-容器运行时准备">2 容器运行时准备</h2>
+<blockquote>
+<p>在每个结点执行</p>
+</blockquote>
+<h3 id="21-安装docker">2.1 安装Docker</h3>
+<blockquote>
+<p>参考：清华大学开源软件镜像站 <a href="https://mirror.tuna.tsinghua.edu.cn/help/docker-ce/" target="_blank" rel="noopener noreffer">Docker CE 软件仓库</a></p>
+</blockquote>
+<p>因作者本地为<code>CentOS7.9</code>操作系统环境，这里使用<code>CentOS/RHEL</code>版本。</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="c1"># 如果你之前安装过docker，请先删掉</span>
+yum remove docker <span class="se">\
+</span><span class="se"></span>          docker-client <span class="se">\
+</span><span class="se"></span>          docker-client-latest <span class="se">\
+</span><span class="se"></span>          docker-common <span class="se">\
+</span><span class="se"></span>          docker-latest <span class="se">\
+</span><span class="se"></span>          docker-latest-logrotate <span class="se">\
+</span><span class="se"></span>          docker-logrotate <span class="se">\
+</span><span class="se"></span>          docker-engine
+
+<span class="c1"># 安装依赖，下载repo文件，并把软件仓库地址替换为镜像站：</span>
+yum install -y yum-utils
+
+<span class="c1"># 这里从docker官方下载文件可能会失败，修改为从阿里云下载</span>
+<span class="c1"># yum-config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo</span>
+yum-config-manager --add-repo http://mirrors.aliyun.com/docker-ce/linux/centos/docker-ce.repo
+sed -i <span class="s1">&#39;s+https://download.docker.com+https://mirrors.tuna.tsinghua.edu.cn/docker-ce+&#39;</span> /etc/yum.repos.d/docker-ce.repo
+
+<span class="c1"># 安装Docker及相关插件</span>
+yum install docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin -y
+</code></pre></td></tr></table>
+</div>
+</div><h3 id="22-配置镜像加速">2.2 配置镜像加速</h3>
+<blockquote>
+<p>参考：中科大USTC镜像站 <a href="https://mirrors.ustc.edu.cn/help/dockerhub.html" target="_blank" rel="noopener noreffer">Docker Hub 源使用帮助</a></p>
+</blockquote>
+<div class="details admonition note open">
+        <div class="details-summary admonition-title">
+            <i class="icon fas fa-pencil-alt fa-fw"></i>注意<i class="details-icon fas fa-angle-right fa-fw"></i>
+        </div>
+        <div class="details-content">
+            <div class="admonition-content"><p>截止2024年7月，以下镜像加速已不可用</p>
+<ul>
+<li>腾讯云 <a href="https://mirror.ccs.tencentyun.com" target="_blank" rel="noopener noreffer">https://mirror.ccs.tencentyun.com</a></li>
+<li>中科大 <a href="https://docker.mirrors.ustc.edu.cn" target="_blank" rel="noopener noreffer">https://docker.mirrors.ustc.edu.cn</a></li>
+<li>Docker官方 <a href="https://registry.docker-cn.com" target="_blank" rel="noopener noreffer">https://registry.docker-cn.com</a></li>
+<li>网易云 <a href="http://hub-mirror.c.163.com" target="_blank" rel="noopener noreffer">http://hub-mirror.c.163.com</a></li>
+<li>南大 <a href="https://docker.nju.edu.cn" target="_blank" rel="noopener noreffer">https://docker.nju.edu.cn</a></li>
+</ul>
+<p>以下镜像加速仍可用</p>
+<ul>
+<li>Daocloud <a href="https://docker.m.daocloud.io" target="_blank" rel="noopener noreffer">https://docker.m.daocloud.io</a></li>
+<li>华为云 <a href="https://swr.cn-north-4.myhuaweicloud.com/ddn-k8s/docker.io" target="_blank" rel="noopener noreffer">https://swr.cn-north-4.myhuaweicloud.com/ddn-k8s/docker.io</a></li>
+</ul>
+</div>
+        </div>
+    </div>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="c1"># 在/etc路径下新建docker文件夹</span>
+sudo mkdir -p /etc/docker
+
+<span class="c1"># 在docker目录下新建daemon.json文件，并加入registry-mirrors</span>
+sudo tee /etc/docker/daemon.json <span class="s">&lt;&lt;-&#39;EOF&#39;
+</span><span class="s">{
+</span><span class="s">  &#34;registry-mirrors&#34;: [&#34;https://docker.m.daocloud.io&#34;]
+</span><span class="s">}
+</span><span class="s">EOF</span>
+
+<span class="c1"># 重新加载systemd管理的单位文件</span>
+sudo systemctl daemon-reload
+
+<span class="c1"># 重新启动Docker服务</span>
+sudo systemctl restart docker
+
+<span class="c1"># 设置Docker服务开机自启</span>
+systemctl <span class="nb">enable</span> docker
+</code></pre></td></tr></table>
+</div>
+</div><h3 id="23-安装cri-docker">2.3 安装cri-docker</h3>
+<blockquote>
+<p>采用软件包离线安装方式</p>
+</blockquote>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span><span class="lnt">21
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="c1"># 下载cri-docker.rpm包</span>
+<span class="c1"># 可能无法直接从Github下载软件包，需自行下载拷贝到虚拟机</span>
+https://github.com/Mirantis/cri-dockerd/releases/download/v0.3.8/cri-dockerd-0.3.8-3.el7.x86_64.rpm
+
+<span class="c1"># 安装libcgroup</span>
+yum install -y libcgroup
+
+<span class="c1"># 安装cri-docker</span>
+rpm -ivh cri-dockerd-0.3.8-3.el7.x86_64.rpm
+
+<span class="c1"># 修改cri-docker.service配置第10行</span>
+vi /usr/lib/systemd/system/cri-docker.service
+
+修改为以下配置
+<span class="nv">ExecStart</span><span class="o">=</span>/usr/bin/cri-dockerd --pod-infra-container-image<span class="o">=</span>registry.aliyuncs.com/google_containers/pause:3.9 --container-runtime-endpoint fd://
+
+<span class="c1"># 启动cri-docker服务</span>
+systemctl start cri-docker
+
+<span class="c1"># 设置cri-docker服务开机自启</span>
+systemctl <span class="nb">enable</span> cri-docker
+</code></pre></td></tr></table>
+</div>
+</div><h2 id="3-部署kubernetes集群">3 部署Kubernetes集群</h2>
+<h3 id="31-配置阿里云镜像源代理">3.1 配置阿里云镜像源代理</h3>
+<blockquote>
+<p>在每个结点执行</p>
+</blockquote>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash">cat <span class="s">&lt;&lt;EOF &gt; /etc/yum.repos.d/kubernetes.repo
+</span><span class="s">[kubernetes]
+</span><span class="s">name=Kubernetes
+</span><span class="s">baseurl=https://mirrors.aliyun.com/kubernetes/yum/repos/kubernetes-el7-x86_64/
+</span><span class="s">enabled=1
+</span><span class="s">gpgcheck=1
+</span><span class="s">repo_gpgcheck=1
+</span><span class="s">gpgkey=https://mirrors.aliyun.com/kubernetes/yum/doc/yum-key.gpg https://mirrors.aliyun.com/kubernetes/yum/doc/rpm-package-key.gpg
+</span><span class="s">EOF</span>
+
+yum makecache
+yum install -y --nogpgcheck kubelet kubeadm kubectl
+yum list kubelet --showduplicates <span class="p">|</span> sort -r <span class="p">|</span>grep 1.28
+</code></pre></td></tr></table>
+</div>
+</div><h3 id="32-安装kubeadmkubeletkubectl">3.2 安装kubeadm、kubelet、kubectl</h3>
+<blockquote>
+<p>在每个结点执行</p>
+</blockquote>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="c1"># 安装最新版本</span>
+yum install -y kubelet kubeadm kubectl -y
+
+<span class="c1"># 配置kubectl命令补全</span>
+yum install bash-completion -y
+kubectl completion bash &gt; /etc/profile.d/kubectl_completion.sh
+. /etc/profile.d/kubectl_completion.sh
+
+<span class="c1"># 启动kubelet服务</span>
+systemctl start kubelet
+
+<span class="c1"># 设置kubelet开机自启</span>
+systemctl <span class="nb">enable</span> kubelet 
+</code></pre></td></tr></table>
+</div>
+</div><h3 id="33-准备启动镜像">3.3 准备启动镜像</h3>
+<blockquote>
+<p>配置从阿里云镜像源拉取</p>
+</blockquote>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span><span class="lnt">5
+</span><span class="lnt">6
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash">kubeadm config images list --kubernetes-version<span class="o">=</span>v1.28.2
+ 
+kubeadm config images list --image-repository registry.aliyuncs.com/google_containers --kubernetes-version<span class="o">=</span>v1.28.2
+
+<span class="c1"># 可能会卡在这里，加--v=5查看日志，可忽略该步，直接执行下面的kubeadm init xxx</span>
+kubeadm config images pull --image-repository registry.aliyuncs.com/google_containers --kubernetes-version<span class="o">=</span>v1.28.2 --cri-socket<span class="o">=</span>unix:///var/run/cri-dockerd.sock
+</code></pre></td></tr></table>
+</div>
+</div><h3 id="34-初始化master结点">3.4 初始化Master结点</h3>
+<blockquote>
+<p>仅在Master结点执行</p>
+</blockquote>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span><span class="lnt">21
+</span><span class="lnt">22
+</span><span class="lnt">23
+</span><span class="lnt">24
+</span><span class="lnt">25
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="o">[</span>root@apple ~<span class="o">]</span><span class="c1"># kubeadm init --kubernetes-version=v1.28.2  --image-repository registry.aliyuncs.com/google_containers --cri-socket=unix:///var/run/cri-dockerd.sock</span>
+
+<span class="c1"># 按照提示完成以下配置</span>
+....
+Your Kubernetes control-plane has initialized successfully!
+
+To start using your cluster, you need to run the following as a regular user:
+
+  mkdir -p <span class="nv">$HOME</span>/.kube
+  sudo cp -i /etc/kubernetes/admin.conf <span class="nv">$HOME</span>/.kube/config
+  sudo chown <span class="k">$(</span>id -u<span class="k">)</span>:<span class="k">$(</span>id -g<span class="k">)</span> <span class="nv">$HOME</span>/.kube/config
+
+Alternatively, <span class="k">if</span> you are the root user, you can run:
+
+  <span class="nb">export</span> <span class="nv">KUBECONFIG</span><span class="o">=</span>/etc/kubernetes/admin.conf
+
+You should now deploy a pod network to the cluster.
+Run <span class="s2">&#34;kubectl apply -f [podnetwork].yaml&#34;</span> with one of the options listed at:
+  https://kubernetes.io/docs/concepts/cluster-administration/addons/
+
+Then you can join any number of worker nodes by running the following on each as root:
+
+kubeadm join 192.168.198.129:6443 --token 3o9lba.lm3tk8w0muttgth7 <span class="se">\
+</span><span class="se"></span>        --discovery-token-ca-cert-hash sha256:4d8ba51c787dd9fdaf0060573a14ad25c85eba1dc08c1b5f2d91d823185fdb22
+....
+</code></pre></td></tr></table>
+</div>
+</div><h3 id="35-将slave结点加入集群">3.5 将Slave结点加入集群</h3>
+<blockquote>
+<p>在Slave结点执行</p>
+</blockquote>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span><span class="lnt">5
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="c1"># 加入worker结点</span>
+kubeadm join 192.168.198.129:6443 --token 3o9lba.lm3tk8w0muttgth7 --discovery-token-ca-cert-hash sha256:4d8ba51c787dd9fdaf0060573a14ad25c85eba1dc08c1b5f2d91d823185fdb22 --cri-socket<span class="o">=</span>unix:///var/run/cri-dockerd.sock
+
+<span class="c1"># 若忘记，可在master结点执行以下命令，重新获取</span>
+kubeadm token create --print-join-command
+</code></pre></td></tr></table>
+</div>
+</div><blockquote>
+<p>在Master结点执行查看结点状态命令，Master和Slave都处于<code>NotReady</code>状态</p>
+</blockquote>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span><span class="lnt">5
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-sh" data-lang="sh"><span class="o">[</span>root@apple ~<span class="o">]</span><span class="c1"># kubectl get nodes</span>
+NAME     STATUS     ROLES           AGE     VERSION
+apple    NotReady   control-plane   3m47s   v1.28.2
+banana   NotReady   &lt;none&gt;          2m29s   v1.28.2
+cherry   NotReady   &lt;none&gt;          17s     v1.28.2
+</code></pre></td></tr></table>
+</div>
+</div><h3 id="36-安装cni网络接口插件">3.6 安装CNI网络接口插件</h3>
+<div class="details admonition note open">
+        <div class="details-summary admonition-title">
+            <i class="icon fas fa-pencil-alt fa-fw"></i>CNI网络插件<i class="details-icon fas fa-angle-right fa-fw"></i>
+        </div>
+        <div class="details-content">
+            <div class="admonition-content"><p>Flannel和Calico都是Kubernetes流行的容器网络接口（CNI）插件（除此之外还有Canal、Weave等），用于在集群中的 pod 之间提供网络连接，它们都具有自己的优缺点，适合不同的用例。</p>
+<p><strong>Flannel</strong>是一种简单、易用的 overlay 网络解决方案。它使用虚拟网络技术在主机之间创建隧道，使 pod 能够相互通信，即使它们位于不同的子网或物理主机上。</p>
+<p><strong>Calico</strong> 是一种功能更全面的 CNI 插件，它提供路由、策略和可观察性等功能。它使用 BGP 协议在主机之间路由流量，这使其具有高度的可扩展性和可管理性。</p>
+<p>深入了解可参考<a href="https://kubernetes.feisky.xyz/extension/network" target="_blank" rel="noopener noreffer">Kubernetes指南-网络插件</a></p>
+</div>
+        </div>
+    </div>
+<blockquote>
+<p>这里安装使用Calico网络接口插件，以下命令仅在Master结点执行</p>
+</blockquote>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span><span class="lnt">5
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-sh" data-lang="sh"><span class="c1"># 安装wget命令</span>
+yum install -y wget
+
+<span class="c1"># 下载Calico插件部署yaml</span>
+wget https://docs.projectcalico.org/manifests/calico.yaml
+</code></pre></td></tr></table>
+</div>
+</div><p>修改calico.yaml中CALICO_IPV4POOL_CIDR参数，该配置参数值应与Pod网段<code>pod-network-cidr</code>一致，若kubectl init中未指定<code>pod-network-cidr</code>,默认Pod网段为<code>10.244.0.0/16</code>，此配置默认为注释需要取消</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span><span class="lnt">5
+</span><span class="lnt">6
+</span><span class="lnt">7
+</span><span class="lnt">8
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-sh" data-lang="sh">vi calico.yaml
+
+<span class="c1"># 修改后如下</span>
+···
+<span class="c1"># no effect. This should fall within `--cluster-cidr`.</span>
+- name: CALICO_IPV4POOL_CIDR
+  value: <span class="s2">&#34;10.244.0.0/16&#34;</span>
+···
+</code></pre></td></tr></table>
+</div>
+</div><p>因docker.io国内访问受限，需修改默认拉取的镜像地址，通过其他镜像站加速，这里使用华为云</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-sh" data-lang="sh"><span class="c1"># 执行全局sed替换</span>
+sed -i <span class="s1">&#39;s/docker.io/swr.cn-north-4.myhuaweicloud.com\/ddn-k8s\/docker.io/g&#39;</span> calico.yaml
+</code></pre></td></tr></table>
+</div>
+</div><p>部署安装Calico插件，因拉取镜像慢，需等待一段时间再观察Pod状态</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-sh" data-lang="sh"><span class="c1"># 部署calico插件</span>
+kubectl apply -f calico.yaml
+
+<span class="c1"># 查看kube-system命名空间Pod状态</span>
+<span class="o">[</span>root@apple ~<span class="o">]</span><span class="c1"># kubectl get pods -n kube-system</span>
+NAME                                       READY   STATUS    RESTARTS      AGE
+calico-kube-controllers-665548954f-9qlzn   1/1     Running   <span class="m">0</span>             6m43s
+calico-node-c66l9                          1/1     Running   <span class="m">0</span>             6m43s
+calico-node-mjblm                          1/1     Running   <span class="m">0</span>             6m43s
+calico-node-xtwbc                          1/1     Running   <span class="m">0</span>             6m43s
+coredns-66f779496c-9996t                   1/1     Running   <span class="m">0</span>             31h
+coredns-66f779496c-ft72m                   1/1     Running   <span class="m">0</span>             31h
+etcd-apple                                 1/1     Running   <span class="m">2</span> <span class="o">(</span>88m ago<span class="o">)</span>   31h
+kube-apiserver-apple                       1/1     Running   <span class="m">2</span> <span class="o">(</span>88m ago<span class="o">)</span>   31h
+kube-controller-manager-apple              1/1     Running   <span class="m">2</span> <span class="o">(</span>88m ago<span class="o">)</span>   31h
+kube-proxy-brb6b                           1/1     Running   <span class="m">2</span> <span class="o">(</span>87m ago<span class="o">)</span>   31h
+kube-proxy-f9zlq                           1/1     Running   <span class="m">2</span> <span class="o">(</span>87m ago<span class="o">)</span>   31h
+kube-proxy-s2blk                           1/1     Running   <span class="m">2</span> <span class="o">(</span>88m ago<span class="o">)</span>   31h
+kube-scheduler-apple                       1/1     Running   <span class="m">2</span> <span class="o">(</span>88m ago<span class="o">)</span>   31h
+</code></pre></td></tr></table>
+</div>
+</div><p>可以看到，Kubernetes集群的核心组件都已正常工作，在Master结点可查看集群结点都处于<code>Ready</code>状态</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span><span class="lnt">5
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="o">[</span>root@apple ~<span class="o">]</span><span class="c1"># kubectl get nodes </span>
+NAME     STATUS   ROLES           AGE   VERSION
+apple    Ready    control-plane   32h   v1.28.2
+banana   Ready    &lt;none&gt;          32h   v1.28.2
+cherry   Ready    &lt;none&gt;          32h   v1.28.2
+</code></pre></td></tr></table>
+</div>
+</div><blockquote>
+<p>到这里，一个单Master双Slave的Kubernetes集群就搭建完成啦！</p>
+</blockquote>]]></description>
+</item><item>
+    <title>Kubernetes备忘清单</title>
+    <link>http://leoyim.cn/kubernetes-cheat-sheet/</link>
+    <pubDate>Fri, 06 Mar 2020 21:40:32 &#43;0800</pubDate>
+    <author>作者</author>
+    <guid>http://leoyim.cn/kubernetes-cheat-sheet/</guid>
+    <description><![CDATA[<p>本文记录了Kubernetes的常用命令</p>
+<p>1.显示所有命名空间</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-shell" data-lang="shell">kubectl get namespace
+<span class="c1"># OR</span>
+kubectl get ns
+</code></pre></td></tr></table>
+</div>
+</div><p>2.显示Pod</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-shell" data-lang="shell"><span class="c1"># 显示所有Pod</span>
+kubectl get pod
+<span class="c1"># 显示某一个命名空间下的Pod</span>
+kubectl get pod -n &lt;namespace&gt;
+</code></pre></td></tr></table>
+</div>
+</div><p>3.创建一个Pod</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-shell" data-lang="shell">kubectl run &lt;pod&gt; --image<span class="o">=</span>&lt;image&gt;
+</code></pre></td></tr></table>
+</div>
+</div><p>4.显示资源的详细信息</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-shell" data-lang="shell">kubectl describe pod<span class="p">|</span>node &lt;pod&gt;<span class="p">|</span>&lt;node&gt;
+</code></pre></td></tr></table>
+</div>
+</div><p>5.显示所有节点</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-shell" data-lang="shell">kubectl get node
+</code></pre></td></tr></table>
+</div>
+</div><p>6.删除Pod</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-shell" data-lang="shell">kubectl delete pod &lt;pod&gt;
+</code></pre></td></tr></table>
+</div>
+</div><p>7.编辑Pod资源的YAML定义文件</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-shell" data-lang="shell">kubectl edit pod &lt;pod&gt;
+</code></pre></td></tr></table>
+</div>
+</div>]]></description>
+</item></channel>
+</rss>

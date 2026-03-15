@@ -1,0 +1,174 @@
+<rss xmlns:atom="http://www.w3.org/2005/Atom" version="2.0">
+    <channel>
+        <title>操作系统 - 分类 - LeoYim&#39;s Note</title>
+        <link>http://leoyim.cn/categories/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F/</link>
+        <description>操作系统 - 分类 - LeoYim&#39;s Note</description>
+        <generator>Hugo -- gohugo.io</generator><language>zh-CN</language><managingEditor>leo.yanwb@outlook.com (leoyim)</managingEditor>
+            <webMaster>leo.yanwb@outlook.com (leoyim)</webMaster><copyright>This work is licensed under a Creative Commons Attribution-NonCommercial 4.0 International License.</copyright><lastBuildDate>Thu, 19 Sep 2024 09:13:03 &#43;0800</lastBuildDate><atom:link href="http://leoyim.cn/categories/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F/" rel="self" type="application/rss+xml" /><item>
+    <title>Linux自启动服务配置和启用</title>
+    <link>http://leoyim.cn/linux-service-configure-enable/</link>
+    <pubDate>Thu, 19 Sep 2024 09:13:03 &#43;0800</pubDate>
+    <author>作者</author>
+    <guid>http://leoyim.cn/linux-service-configure-enable/</guid>
+    <description><![CDATA[<blockquote>
+<p>本文使用以下Go项目作为配置示例，编译后获得可执行程序<code>main</code></p>
+</blockquote>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-go" data-lang="go"><span class="kn">package</span> <span class="nx">main</span>
+
+<span class="kn">import</span> <span class="p">(</span>
+	<span class="s">&#34;net/http&#34;</span>
+
+	<span class="s">&#34;github.com/gin-gonic/gin&#34;</span>
+<span class="p">)</span>
+
+<span class="kd">func</span> <span class="nf">main</span><span class="p">()</span> <span class="p">{</span>
+	<span class="nx">r</span> <span class="o">:=</span> <span class="nx">gin</span><span class="p">.</span><span class="nf">Default</span><span class="p">()</span>
+
+	<span class="nx">r</span><span class="p">.</span><span class="nf">GET</span><span class="p">(</span><span class="s">&#34;/hello&#34;</span><span class="p">,</span> <span class="nx">hello</span><span class="p">)</span>
+
+	<span class="nx">r</span><span class="p">.</span><span class="nf">Run</span><span class="p">(</span><span class="s">&#34;:8080&#34;</span><span class="p">)</span>
+<span class="p">}</span>
+
+<span class="kd">func</span> <span class="nf">hello</span><span class="p">(</span><span class="nx">c</span> <span class="o">*</span><span class="nx">gin</span><span class="p">.</span><span class="nx">Context</span><span class="p">)</span> <span class="p">{</span>
+	<span class="nx">c</span><span class="p">.</span><span class="nf">JSON</span><span class="p">(</span><span class="nx">http</span><span class="p">.</span><span class="nx">StatusOK</span><span class="p">,</span> <span class="nx">gin</span><span class="p">.</span><span class="nx">H</span><span class="p">{</span><span class="s">&#34;[MESAGE]&#34;</span><span class="p">:</span> <span class="s">&#34;Hello World!&#34;</span><span class="p">})</span>
+<span class="p">}</span>
+</code></pre></td></tr></table>
+</div>
+</div><blockquote>
+<p>执行可执行程序后，可在本地访问<code>http://localhost:8080/hello</code>接口，如下所示：</p>
+</blockquote>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="o">[</span>root@VM-12-5-centos ~<span class="o">]</span><span class="c1"># curl http://localhost:8080/hello</span>
+<span class="o">{</span><span class="s2">&#34;[MESAGE]&#34;</span>:<span class="s2">&#34;Hello World!&#34;</span><span class="o">}</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>在 Linux 系统中，可以使用 systemd 管理自启动服务。以下是配置和启用自启动服务的基本步骤：</p>
+<h2 id="1-创建服务文件">1 创建服务文件</h2>
+<p>服务文件一般位于 /etc/systemd/system/ 目录下，文件名以 .service 结尾</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash">vi /etc/systemd/system/my_service.service
+</code></pre></td></tr></table>
+</div>
+</div><p>在文件中添加以下内容：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-ini" data-lang="ini"><span class="k">[Unit]</span>
+<span class="na">Description</span><span class="o">=</span><span class="s">My Custom Service</span>
+<span class="na">After</span><span class="o">=</span><span class="s">network.target</span>
+
+<span class="k">[Service]</span>
+<span class="na">ExecStart</span><span class="o">=</span><span class="s">/path/to/your/executable_or_script</span>
+<span class="na">Restart</span><span class="o">=</span><span class="s">on-failure</span>
+
+<span class="k">[Install]</span>
+<span class="na">WantedBy</span><span class="o">=</span><span class="s">multi-user.target</span>
+</code></pre></td></tr></table>
+</div>
+</div><blockquote>
+<p>Description：对服务的描述。
+After：指定服务应在什么条件下启动（例如 network.target 表示在网络服务启动后）。
+ExecStart：定义服务启动时执行的命令（可以是可执行文件或脚本）。
+Restart：定义服务在失败时是否自动重启（可选项）。</p>
+</blockquote>
+<h2 id="2-重新加载-systemd-配置">2 重新加载 systemd 配置</h2>
+<p>添加或修改 .service 文件后，重新加载 systemd 配置：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash">sudo systemctl daemon-reload
+</code></pre></td></tr></table>
+</div>
+</div><h2 id="3-手动启动服务">3 手动启动服务</h2>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash">sudo systemctl start my_service.service
+</code></pre></td></tr></table>
+</div>
+</div><h2 id="4-启用服务">4 启用服务</h2>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash">sudo systemctl <span class="nb">enable</span> my_service.service
+</code></pre></td></tr></table>
+</div>
+</div><h2 id="5-查看服务状态">5 查看服务状态</h2>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash">sudo systemctl status my_service.service
+</code></pre></td></tr></table>
+</div>
+</div><h2 id="6-停止服务">6 停止服务</h2>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash">sudo systemctl stop my_service.service
+</code></pre></td></tr></table>
+</div>
+</div><h2 id="7-禁用服务">7 禁用服务</h2>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash">sudo systemctl disable my_service.service
+</code></pre></td></tr></table>
+</div>
+</div>]]></description>
+</item></channel>
+</rss>

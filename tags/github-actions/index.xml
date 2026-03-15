@@ -1,0 +1,191 @@
+<rss xmlns:atom="http://www.w3.org/2005/Atom" version="2.0">
+    <channel>
+        <title>GitHub Actions - 标签 - LeoYim&#39;s Note</title>
+        <link>http://leoyim.cn/tags/github-actions/</link>
+        <description>GitHub Actions - 标签 - LeoYim&#39;s Note</description>
+        <generator>Hugo -- gohugo.io</generator><language>zh-CN</language><managingEditor>leo.yanwb@outlook.com (leoyim)</managingEditor>
+            <webMaster>leo.yanwb@outlook.com (leoyim)</webMaster><copyright>This work is licensed under a Creative Commons Attribution-NonCommercial 4.0 International License.</copyright><lastBuildDate>Fri, 23 Dec 2022 15:47:22 &#43;0800</lastBuildDate><atom:link href="http://leoyim.cn/tags/github-actions/" rel="self" type="application/rss+xml" /><item>
+    <title>如何使用GitHub Actions构建并部署网站</title>
+    <link>http://leoyim.cn/how-to-use-github-actions-build-deploy-website/</link>
+    <pubDate>Fri, 23 Dec 2022 15:47:22 &#43;0800</pubDate>
+    <author>作者</author>
+    <guid>http://leoyim.cn/how-to-use-github-actions-build-deploy-website/</guid>
+    <description><![CDATA[<p>本文记录了作者是如何使用Github Actions完成本站的自动化构建与部署。</p>
+<p>题图源：<a href="https://gabrieltanner.org/blog/an-introduction-to-github-actions" title="an-introduction-to-github-actions" target="_blank" rel="noopener noreffer">an-introduction-to-github-actions</a></p>
+<hr>
+<blockquote>
+<p><a href="https://docs.github.com/zh/actions" target="_blank" rel="noopener noreffer">GitHub Actions</a> 是 <a href="https://github.com/" target="_blank" rel="noopener noreffer">GitHub</a> 提供的自动化工作流服务，可用于自动化构建、测试和部署软件项目。它允许开发者根据事件触发执行自定义任务，如提交代码时自动运行测试、定时任务等。通过简单的配置文件，即可实现CI/CD流程，提高开发效率并促进团队协作。</p>
+</blockquote>
+<p>本站采用GitHub Actions来完成自动化构建与发布，通过配置代码提交自动触发执行，每当将源码提交至Github仓库，便触发一次构建和发布，极大提升了构建与部署效率。</p>
+<h2 id="heading"></h2>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span><span class="lnt">21
+</span><span class="lnt">22
+</span><span class="lnt">23
+</span><span class="lnt">24
+</span><span class="lnt">25
+</span><span class="lnt">26
+</span><span class="lnt">27
+</span><span class="lnt">28
+</span><span class="lnt">29
+</span><span class="lnt">30
+</span><span class="lnt">31
+</span><span class="lnt">32
+</span><span class="lnt">33
+</span><span class="lnt">34
+</span><span class="lnt">35
+</span><span class="lnt">36
+</span><span class="lnt">37
+</span><span class="lnt">38
+</span><span class="lnt">39
+</span><span class="lnt">40
+</span><span class="lnt">41
+</span><span class="lnt">42
+</span><span class="lnt">43
+</span><span class="lnt">44
+</span><span class="lnt">45
+</span><span class="lnt">46
+</span><span class="lnt">47
+</span><span class="lnt">48
+</span><span class="lnt">49
+</span><span class="lnt">50
+</span><span class="lnt">51
+</span><span class="lnt">52
+</span><span class="lnt">53
+</span><span class="lnt">54
+</span><span class="lnt">55
+</span><span class="lnt">56
+</span><span class="lnt">57
+</span><span class="lnt">58
+</span><span class="lnt">59
+</span><span class="lnt">60
+</span><span class="lnt">61
+</span><span class="lnt">62
+</span><span class="lnt">63
+</span><span class="lnt">64
+</span><span class="lnt">65
+</span><span class="lnt">66
+</span><span class="lnt">67
+</span><span class="lnt">68
+</span><span class="lnt">69
+</span><span class="lnt">70
+</span><span class="lnt">71
+</span><span class="lnt">72
+</span><span class="lnt">73
+</span><span class="lnt">74
+</span><span class="lnt">75
+</span><span class="lnt">76
+</span><span class="lnt">77
+</span><span class="lnt">78
+</span><span class="lnt">79
+</span><span class="lnt">80
+</span><span class="lnt">81
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-yaml" data-lang="yaml"><span class="c"># This is a basic workflow to help you get started with Actions</span><span class="w">
+</span><span class="w">
+</span><span class="w"></span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l">CI</span><span class="w">
+</span><span class="w">
+</span><span class="w"></span><span class="c"># Controls when the workflow will run</span><span class="w">
+</span><span class="w"></span><span class="nt">on</span><span class="p">:</span><span class="w">
+</span><span class="w">  </span><span class="c"># Triggers the workflow on push or pull request events but only for the main branch</span><span class="w">
+</span><span class="w">  </span><span class="nt">push</span><span class="p">:</span><span class="w">
+</span><span class="w">    </span><span class="nt">branches</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="w"> </span><span class="l">main ]</span><span class="w">
+</span><span class="w">
+</span><span class="w"></span><span class="c"># A workflow run is made up of one or more jobs that can run sequentially or in parallel</span><span class="w">
+</span><span class="w"></span><span class="nt">jobs</span><span class="p">:</span><span class="w">
+</span><span class="w">  </span><span class="c"># This workflow contains a single job called &#34;build&#34;</span><span class="w">
+</span><span class="w">  </span><span class="nt">build</span><span class="p">:</span><span class="w">
+</span><span class="w">    </span><span class="c"># The type of runner that the job will run on</span><span class="w">
+</span><span class="w">    </span><span class="nt">runs-on</span><span class="p">:</span><span class="w"> </span><span class="l">ubuntu-latest</span><span class="w">
+</span><span class="w">
+</span><span class="w">    </span><span class="c"># Steps represent a sequence of tasks that will be executed as part of the job</span><span class="w">
+</span><span class="w">    </span><span class="nt">steps</span><span class="p">:</span><span class="w">
+</span><span class="w">
+</span><span class="w">      </span>- <span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l">安装 Go 1.17</span><span class="w">
+</span><span class="w">        </span><span class="nt">uses</span><span class="p">:</span><span class="w"> </span><span class="l">actions/setup-go@v1</span><span class="w">
+</span><span class="w">        </span><span class="nt">with</span><span class="p">:</span><span class="w">
+</span><span class="w">          </span><span class="nt">go-version</span><span class="p">:</span><span class="w"> </span><span class="m">1.17</span><span class="w">
+</span><span class="w">        </span><span class="nt">id</span><span class="p">:</span><span class="w"> </span><span class="l">go</span><span class="w">
+</span><span class="w">
+</span><span class="w">      </span>- <span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l">验证 Go 安装及版本</span><span class="w">
+</span><span class="w">        </span><span class="nt">run</span><span class="p">:</span><span class="w"> </span><span class="l">go version</span><span class="w">
+</span><span class="w">
+</span><span class="w">      </span><span class="c"># Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it</span><span class="w">
+</span><span class="w">      </span>- <span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l">签入项目源代码</span><span class="w">
+</span><span class="w">        </span><span class="nt">uses</span><span class="p">:</span><span class="w"> </span><span class="l">actions/checkout@v2</span><span class="w">
+</span><span class="w">
+</span><span class="w">      </span>- <span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l">安装 Hugo</span><span class="w">
+</span><span class="w">        </span><span class="nt">uses</span><span class="p">:</span><span class="w"> </span><span class="l">peaceiris/actions-hugo@v2</span><span class="w">
+</span><span class="w">        </span><span class="nt">with</span><span class="p">:</span><span class="w">
+</span><span class="w">          </span><span class="nt">hugo-version</span><span class="p">:</span><span class="w"> </span><span class="s1">&#39;0.88.1&#39;</span><span class="w">
+</span><span class="w">          </span><span class="nt">extended</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="w">
+</span><span class="w">
+</span><span class="w">      </span>- <span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l">验证 Hugo 安装及版本</span><span class="w">
+</span><span class="w">        </span><span class="nt">run</span><span class="p">:</span><span class="w"> </span><span class="l">hugo version</span><span class="w">
+</span><span class="w">
+</span><span class="w">      </span>- <span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l">编译 Hugo项目</span><span class="w">
+</span><span class="w">        </span><span class="nt">run</span><span class="p">:</span><span class="w"> </span><span class="l">hugo &amp;&amp; ls -lrt</span><span class="w">
+</span><span class="w">
+</span><span class="w">      </span>- <span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l">登录Docker Hub</span><span class="w">
+</span><span class="w">        </span><span class="nt">env</span><span class="p">:</span><span class="w">
+</span><span class="w">          </span><span class="nt">DOCKER_USERNAME</span><span class="p">:</span><span class="w"> </span><span class="l">${{secrets.DOCKER_USERNAME}}</span><span class="w">
+</span><span class="w">          </span><span class="nt">DOCKER_PASSWORD</span><span class="p">:</span><span class="w"> </span><span class="l">${{secrets.DOCKER_PASSWORD}}</span><span class="w">
+</span><span class="w">        </span><span class="nt">run</span><span class="p">:</span><span class="w"> </span><span class="l">docker version &amp;&amp; echo &#34;${DOCKER_PASSWORD}&#34; | docker login --username &#34;${DOCKER_USERNAME}&#34; --password-stdin</span><span class="w">
+</span><span class="w">
+</span><span class="w">      </span><span class="c"># - name: 安装buildx</span><span class="w">
+</span><span class="w">      </span><span class="c">#   uses: crazy-max/ghaction-docker-buildx@v1</span><span class="w">
+</span><span class="w">      </span><span class="c">#   with:</span><span class="w">
+</span><span class="w">      </span><span class="c">#     buildx-version: latest</span><span class="w">
+</span><span class="w">
+</span><span class="w">      </span>- <span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l">构建镜像并推送至DockerHub,再删除本地镜像</span><span class="w">
+</span><span class="w">        </span><span class="nt">env</span><span class="p">:</span><span class="w">
+</span><span class="w">          </span><span class="nt">DOCKER_USERNAME</span><span class="p">:</span><span class="w"> </span><span class="l">${{secrets.DOCKER_USERNAME}}</span><span class="w">
+</span><span class="w">        </span><span class="nt">run</span><span class="p">:</span><span class="w">
+</span><span class="w">          </span><span class="l">commitId=&#34;${{ github.event.commits[0].id }}&#34; &amp;&amp;</span><span class="w">
+</span><span class="w">          </span><span class="l">docker build --tag ${DOCKER_USERNAME}/blog:&#34;${commitId}&#34; . &amp;&amp;</span><span class="w">
+</span><span class="w">          </span><span class="l">docker images &amp;&amp;</span><span class="w">
+</span><span class="w">          </span><span class="l">docker push ${DOCKER_USERNAME}/blog:&#34;${commitId}&#34; &amp;&amp;</span><span class="w">
+</span><span class="w">          </span><span class="l">docker rmi ${DOCKER_USERNAME}/blog:&#34;${commitId}&#34;</span><span class="w">
+</span><span class="w">      
+</span><span class="w">      </span>- <span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l">容器更新部署到服务器</span><span class="w">
+</span><span class="w">        </span><span class="nt">env</span><span class="p">:</span><span class="w">
+</span><span class="w">          </span><span class="nt">DOCKER_REPO</span><span class="p">:</span><span class="w"> </span><span class="l">${{secrets.DOCKER_REPO}}</span><span class="w">
+</span><span class="w">        </span><span class="nt">uses</span><span class="p">:</span><span class="w"> </span><span class="l">appleboy/ssh-action@master</span><span class="w">
+</span><span class="w">        </span><span class="nt">with</span><span class="p">:</span><span class="w">
+</span><span class="w">          </span><span class="nt">host</span><span class="p">:</span><span class="w"> </span><span class="l">${{secrets.DEPLOY_HOST}}</span><span class="w">
+</span><span class="w">          </span><span class="nt">username</span><span class="p">:</span><span class="w"> </span><span class="l">${{secrets.DEPLOY_USER}}</span><span class="w">
+</span><span class="w">          </span><span class="nt">key</span><span class="p">:</span><span class="w"> </span><span class="l">${{secrets.DEPLOY_SECRET}}</span><span class="w">
+</span><span class="w">          </span><span class="nt">port</span><span class="p">:</span><span class="w"> </span><span class="l">${{secrets.DEPLOY_PORT}}</span><span class="w">
+</span><span class="w">          </span><span class="nt">script</span><span class="p">:</span><span class="w">
+</span><span class="w">            </span><span class="l">docker stop blog &amp;&amp;</span><span class="w">
+</span><span class="w">            </span><span class="l">docker rm blog &amp;&amp;</span><span class="w">
+</span><span class="w">            </span><span class="l">docker images | grep blog | awk &#39;{print $3}&#39; | xargs docker rmi &amp;&amp;</span><span class="w">
+</span><span class="w">            </span><span class="l">docker run -d --name blog -p 80:80 leoyim/blog:${{ github.event.commits[0].id }}</span><span class="w">
+</span><span class="w">            
+</span></code></pre></td></tr></table>
+</div>
+</div>]]></description>
+</item></channel>
+</rss>
