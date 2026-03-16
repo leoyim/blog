@@ -2,62 +2,77 @@
 <html>
 <head>
 	<link rel="icon" href="favicon.ico">
-	<title>Love like Stars</title>
+	<title>Love like Sakura</title>
 	<meta charset="utf-8">
+	<link rel="preconnect" href="https://fonts.googleapis.com">
+	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+	<link href="https://fonts.googleapis.com/css2?family=Anonymous+Pro:ital,wght@0,400;0,700;1,400;1,700&family=Hurricane&display=swap" rel="stylesheet">
 	<style>
-		body {
-			background-color: #000;
+		* {
 			margin: 0;
 			padding: 0;
+			box-sizing: border-box;
+		}
+		body {
+			background: linear-gradient(180deg, #87CEEB 0%, #B0E0E6 30%, #FFE4E1 70%, #FFB6C1 100%);
+			margin: 0;
+			padding: 0;
+			overflow: hidden;
+			min-height: 100vh;
 		}
 		canvas {
 			display: block;
-			margin: 0 auto;
+			position: absolute;
+			top: 0;
+			left: 0;
 		}
 		#timer {
 			position: fixed;
 			top: 50%;
 			left: 50%;
 			transform: translate(-50%, -50%);
-			background-color: rgba(0, 0, 0, 0.5);
-			color: #FFF;
+			background: linear-gradient(135deg, rgba(255,255,255,0.85), rgba(255,240,245,0.75));
+			color: #d65dbb;
 			text-align: center;
-			padding: 10px 10px;
-			font-family: Arial;
-			font-size: 36px;
-			border-radius: 15px;
-			border: 3px solid rgb(238, 228, 255);
-			box-shadow: 0px 0px 30px rgb(92, 1, 251),0px 0px 20px rgb(95, 3, 255) inset;
+			padding: 20px 40px;
+			font-family: 'Ma Shan Zheng', cursive;
+			font-size: 42px;
+			border-radius: 25px;
+			border: 2px solid rgba(255, 183, 197, 0.8);
+			box-shadow: 
+				0 8px 32px rgba(255, 183, 197, 0.4),
+				0 0 60px rgba(255, 255, 255, 0.6) inset;
+			backdrop-filter: blur(10px);
+			z-index: 100;
+			pointer-events: none;
 		}
 		@font-face {
-			font-family: loveisfree;
-			src: url("http://image.leoyim.cn/Straphanger-1.otf");
+			font-family: 'PlaywriteDKUloopetGuides-Regular';
+			src: url("PlaywriteDKUloopetGuides-Regular.ttf") format("truetype");
+			font-display: swap;
 		}
 		@font-face {
-			font-family: rainbow;
-			src: url("http://image.leoyim.cn/Handwritten-English-2.ttf");
+			font-family: 'FingerPaint-Regular';
+			src: url("FingerPaint-Regular.ttf") format("truetype");
+			font-display: swap;
 		}
-		day,times {
-			font-family: rainbow;
+		day, times {
+			font-family: 'FingerPaint-Regular';
 			font-size: 72px;
 		}
-		day{
-			color: #ffdfdf;
+		day {
+			color: #ff69b4;
 			text-shadow:
-				0 0 0.2em red,
-				0 0 0.4em #f00,
-				0 0 0.6em #ff0000,
-				0 0 0.8em #ff5050,
-				0 0 1em #ff7f7f;
+				0 0 0.3em rgba(255, 20, 147, 0.6),
+				0 0 0.6em rgba(255, 105, 180, 0.4),
+				0 2px 4px rgba(255, 255, 255, 0.8);
 		}
 		times {
-			color: rgb(207, 255, 239);
+			color: #ff85a2;
 			text-shadow:
-				0 0 0.2em #0fa,
-				0 0 0.4em #0fa,
-				0 0 0.6em #0fa,
-				0 0 0.8em rgb(156, 246, 216),
-				0 0 1em rgb(156, 246, 216);
+				0 0 0.3em rgba(255, 107, 138, 0.6),
+				0 0 0.6em rgba(255, 133, 162, 0.4),
+				0 2px 4px rgba(255, 255, 255, 0.8);
 		}
 
 		.love{
@@ -66,181 +81,156 @@
 			left: 0;
 			width: 100%;
 			padding: 20px;
-			color: white;
+			color: rgba(64, 21, 101, 0.997);
 			text-align: center;
-			font-family: loveisfree;
-			font-weight: bold;
+			font-family: PlaywriteDKUloopetGuides-Regular;
+			font-weight: bolder;
 		}
-        .heart::before {
-            content: "💖";
-            position: absolute;
-            top: 0;
-            left: 0;
-            font-size: 18px;
-        }
-        .heart {
-            position: absolute;
-            left: 0;
-            top: 0;
-            animation: heart 1s ease-out forwards;
-        }
-        @keyframes heart {
-            0% {
-                transform: scale(0);
-                opacity: 0;
-            }
-            30% {
-                transform: scale(1);
-                opacity: 1;
-            }
-            50% {
-                transform: scale(1.5);
-                opacity: 0.5;
-            }
-            100% {
-                transform: scale(2);
-                opacity: 0;
-            }
-        }
 	</style>
 </head>
 <body>
 <div id="timer"></div>
 <canvas id="canvas"></canvas>
-<div class="love"><span> I💖U, MengYu <span><br><span>- Begin 2023-06-08, End Forever -</span></div>
+<div class="love"> I Love U, MengYu <br> Begin 2023-06-08, End Forever </div>
 <audio id="bg-music" loop>
 	<source src="rsdxzmm.mp3" type="audio/mp3">
-</audio>  
+</audio>
 <script>
-
-	//点击屏幕播放背景音乐
+	// 点击屏幕播放背景音乐
     const audio = document.getElementById('bg-music')
+	const hearts = [];
+	
 	document.addEventListener('click', function(event) {
-		var heart = document.createElement("div");
-		heart.classList.add("heart");
-		heart.style.left = event.clientX + "px";
-		heart.style.top = event.clientY + "px";
-		document.body.appendChild(heart);
-		setTimeout(function() {
-			heart.remove();
-		}, 1000); // 1秒后移除♥
+		hearts.push({
+			x: event.clientX,
+			y: event.clientY,
+			size: 0,
+			opacity: 1,
+			maxSize: 20 + Math.random() * 15
+		});
 		audio.play();
 	});
 
-	//获取画布
+	// 获取画布
 	var canvas = document.getElementById("canvas");
 	var context = canvas.getContext("2d");
 
-	//设置画布大小
+	// 设置画布大小
 	canvas.width = window.innerWidth;
 	canvas.height = window.innerHeight;
 
-	//创建星星数组
-	var stars = [];
+	// 创建数组
+	var petals = [];
 
-	//创建流星数组
-	var meteors = [];
-
-	//创建计时器
+	// 创建计时器
 	var startTime = new Date("2023-06-08T22:08:00").getTime();
 
-	//创建夜空背景
-	function drawSky() {
-		context.fillStyle = "#000";
-		context.fillRect(0, 0, canvas.width, canvas.height);
+	// 绘制樱花形状
+	function drawSakuraFlower(ctx, x, y, size, color, opacity, rotation) {
+		ctx.save();
+		ctx.translate(x, y);
+		ctx.rotate(rotation * Math.PI / 180);
+		ctx.globalAlpha = opacity;
+		
+		// 绘制五瓣樱花
+		for (let i = 0; i < 5; i++) {
+			ctx.rotate(72 * Math.PI / 180);
+			ctx.beginPath();
+			ctx.fillStyle = color;
+			ctx.moveTo(0, 0);
+			ctx.bezierCurveTo(
+				size * 0.3, size * 0.3,
+				size * 0.4, size * 0.8,
+				0, size
+			);
+			ctx.bezierCurveTo(
+				-size * 0.4, size * 0.8,
+				-size * 0.3, size * 0.3,
+				0, 0
+			);
+			ctx.fill();
+		}
+		
+		// 花蕊
+		ctx.beginPath();
+		ctx.fillStyle = 'rgba(255, 255, 220, ' + (opacity * 0.9) + ')';
+		ctx.arc(0, 0, size * 0.25, 0, Math.PI * 2);
+		ctx.fill();
+		
+		ctx.restore();
 	}
 
-	//创建星星
-	function createStar() {
-		var star = {
-			x: Math.random() * canvas.width,
-			y: Math.random() * canvas.height,
-			size: Math.random() * 3 + 1,
-			brightness: Math.random() * 0.5 + 0.5,
-			blink: Math.random() * 10 + 5
-		};
-		stars.push(star);
-        if(stars.length > 521){
-            stars.splice(0,24)
-        }
+	// 绘制单个飘落的花瓣
+	function drawFallingPetal(ctx, x, y, size, rotation, color, opacity, wobble) {
+		ctx.save();
+		ctx.translate(x, y);
+		ctx.rotate(rotation * Math.PI / 180);
+		ctx.globalAlpha = opacity;
+		
+		ctx.beginPath();
+		ctx.fillStyle = color;
+		
+		const wobbleOffset = Math.sin(wobble) * 2;
+		ctx.moveTo(0, -size * 0.3);
+		ctx.bezierCurveTo(
+			size * 0.4 + wobbleOffset, -size * 0.2,
+			size * 0.5, size * 0.3,
+			0, size * 0.6
+		);
+		ctx.bezierCurveTo(
+			-size * 0.5, size * 0.3,
+			-size * 0.4 - wobbleOffset, -size * 0.2,
+			0, -size * 0.3
+		);
+		ctx.fill();
+		
+		ctx.restore();
 	}
 
-    //创建流星
-    function createMeteor() {
-        if (meteors.length < 3) {
-            var meteor = {
-                x: Math.random() * canvas.width,
-                y: Math.random() * canvas.height,
-                speed: Math.random() * 10 + 5,
-                length: Math.random() * 80 + 20,
-                angle: Math.random() * Math.PI / 2 + Math.PI / 4,
-                trail: [],
-                arcRadius: Math.random() * 100 + 50,
-                arcAngle: 0
-            };
-            meteors.push(meteor);
-        }
-    }
+	// 樱花花瓣类
+	function Petal(x, y) {
+		this.x = x || Math.random() * canvas.width;
+		this.y = y || -20;
+		this.size = Math.random() * 8 + 6;
+		this.speedY = Math.random() * 1 + 0.5;
+		this.speedX = Math.random() * 1 - 0.5;
+		this.rotation = Math.random() * 360;
+		this.rotationSpeed = Math.random() * 1 - 0.5;
+		this.opacity = Math.random() * 0.4 + 0.6;
+		this.wobble = Math.random() * Math.PI * 2;
+		this.wobbleSpeed = Math.random() * 0.03 + 0.02;
+		this.wobbleAmount = Math.random() * 1.5 + 0.5;
+		
+		const colors = [
+			'rgba(255, 183, 197, ',
+			'rgba(255, 192, 203, ',
+			'rgba(255, 160, 180, ',
+			'rgba(255, 224, 229, ',
+			'rgba(250, 200, 210, '
+		];
+		this.baseColor = colors[Math.floor(Math.random() * colors.length)];
+	}
 
-	//绘制星星
-	function drawStars() {
-		for (var i = 0; i < stars.length; i++) {
-			var star = stars[i];
-			context.beginPath();
-			context.arc(star.x, star.y, star.size, 0, Math.PI * 2);
-			context.closePath();
-			context.fillStyle = "rgba(255, 255, 255, " + star.brightness + ")";
-			context.fill();
-
-			//闪烁效果
-			star.blink--;
-			if (star.blink <= 0) {
-				star.brightness = Math.random() * 0.5 + 0.5;
-				star.blink = Math.random() * 10 + 5;
-			}
+	function updatePetal(petal) {
+		petal.y += petal.speedY;
+		petal.x += petal.speedX + Math.sin(petal.wobble) * petal.wobbleAmount;
+		petal.wobble += petal.wobbleSpeed;
+		petal.rotation += petal.rotationSpeed;
+		
+		if (petal.y > canvas.height + 20) {
+			petal.y = -20;
+			petal.x = Math.random() * canvas.width;
+			petal.opacity = Math.random() * 0.4 + 0.6;
 		}
 	}
 
-    //绘制流星
-    function drawMeteors() {
-        for (var i = 0; i < meteors.length; i++) {
-            var meteor = meteors[i];
+	function createPetal() {
+		if (petals.length < 250) {
+			petals.push(new Petal());
+		}
+	}
 
-            meteor.arcAngle += meteor.speed / meteor.arcRadius;
-
-            meteor.x += Math.cos(meteor.angle) * meteor.speed;
-            meteor.y += Math.sin(meteor.angle) * meteor.speed;
-
-            meteor.trail.push({ x: meteor.x, y: meteor.y });
-
-            if (meteor.trail.length > meteor.length) {
-                meteor.trail.shift();
-            }
-
-            if (meteor.arcAngle >= Math.PI) {
-                meteors.splice(i, 1);
-                i--;
-                continue;
-            }
-
-            context.beginPath();
-            context.moveTo(meteor.trail[0].x, meteor.trail[0].y);
-
-            for (var j = 1; j < meteor.trail.length; j++) {
-                context.lineTo(meteor.trail[j].x, meteor.trail[j].y);
-            }
-
-            var gradient = context.createLinearGradient(meteor.x, meteor.y, meteor.trail[0].x, meteor.trail[0].y);
-            gradient.addColorStop(0, "rgba(255, 255, 255, 1)");
-            gradient.addColorStop(1, "rgba(255, 255, 255, 0)");
-
-            context.strokeStyle = gradient;
-            context.lineWidth = 1;
-            context.stroke();
-        }
-    }
-
-	//更新计时器
+	// 更新计时器
 	function updateTimer() {
 		var currentTime = new Date().getTime();
 		var timeDiff = currentTime - startTime;
@@ -256,38 +246,70 @@
 		timer.innerHTML = "<day>" + days + "</day> <times>" + hours + ":" + minutes + ":" + seconds + "</times>";
 	}
 
-	//循环绘制
+	// 绘制点击爱心
+	function drawHearts(ctx) {
+		for (let i = hearts.length - 1; i >= 0; i--) {
+			const heart = hearts[i];
+			heart.size += (heart.maxSize - heart.size) * 0.1;
+			heart.opacity -= 0.02;
+			heart.y -= 0.5;
+			
+			if (heart.opacity <= 0) {
+				hearts.splice(i, 1);
+				continue;
+			}
+			
+			ctx.save();
+			ctx.translate(heart.x, heart.y);
+			ctx.globalAlpha = heart.opacity;
+			ctx.fillStyle = 'rgba(255, 105, 180, 0.8)';
+			
+			ctx.beginPath();
+			const size = heart.size;
+			ctx.moveTo(0, size * 0.3);
+			ctx.bezierCurveTo(size * 0.5, -size * 0.3, size, 0, 0, size);
+			ctx.bezierCurveTo(-size, 0, -size * 0.5, -size * 0.3, 0, size * 0.3);
+			ctx.fill();
+			
+			ctx.restore();
+		}
+	}
+
+	// 循环绘制
 	function loop() {
-		//清空画布
+		// 清空画布
 		context.clearRect(0, 0, canvas.width, canvas.height);
 
-		//绘制夜空背景
-		drawSky();
-
-		//随机生成星星
-		if (Math.random() < 0.05) {
-			createStar();
+		// 随机生成飘落的花瓣
+		if (Math.random() < 0.25) {
+			createPetal();
 		}
 
-		//随机生成流星
-		if (Math.random() < 0.05) {
-			createMeteor();
-		}
+		// 更新和绘制飘落的花瓣
+		petals.forEach(petal => {
+			updatePetal(petal);
+			drawFallingPetal(context, petal.x, petal.y, petal.size, 
+				petal.rotation, petal.baseColor + petal.opacity + ')', petal.opacity, petal.wobble);
+		});
+		
+		// 绘制点击爱心
+		drawHearts(context);
 
-		//绘制星星
-		drawStars();
-
-		//绘制流星
-		drawMeteors();
-
-		//更新计时器
+		// 更新计时器
 		updateTimer();
 
-		//循环绘制
+		// 循环绘制
 		requestAnimationFrame(loop);
 	}
 
-	//启动循环绘制
+	// 窗口大小改变时调整画布
+	window.addEventListener('resize', function() {
+		canvas.width = window.innerWidth;
+		canvas.height = window.innerHeight;
+		petals = [];
+	});
+
+	// 启动循环绘制
 	loop();
 </script>
 </body>
