@@ -1,0 +1,609 @@
+<rss xmlns:atom="http://www.w3.org/2005/Atom" version="2.0">
+    <channel>
+        <title>开发环境 - 标签 - LeoYim&#39;s Blog</title>
+        <link>http://leoyim.cn/tags/%E5%BC%80%E5%8F%91%E7%8E%AF%E5%A2%83/</link>
+        <description>开发环境 - 标签 - LeoYim&#39;s Blog</description>
+        <generator>Hugo -- gohugo.io</generator><language>zh-CN</language><managingEditor>leo.yanwb@outlook.com (leoyim)</managingEditor>
+            <webMaster>leo.yanwb@outlook.com (leoyim)</webMaster><copyright>This work is licensed under a Creative Commons Attribution-NonCommercial 4.0 International License.</copyright><lastBuildDate>Wed, 17 Jun 2026 18:33:00 &#43;0800</lastBuildDate><atom:link href="http://leoyim.cn/tags/%E5%BC%80%E5%8F%91%E7%8E%AF%E5%A2%83/" rel="self" type="application/rss+xml" /><item>
+    <title>WSL2 Ubuntu 迁移实战</title>
+    <link>http://leoyim.cn/wsl2-ubuntu-migration/</link>
+    <pubDate>Wed, 17 Jun 2026 18:33:00 &#43;0800</pubDate>
+    <author>作者</author>
+    <guid>http://leoyim.cn/wsl2-ubuntu-migration/</guid>
+    <description><![CDATA[<h2 id="前言">前言</h2>
+<p>随着开发环境越来越复杂，WSL（Windows Subsystem for Linux）占用的空间也越来越大。</p>
+<p>最初发现 WSL 占用了约 19GB 空间，而默认情况下 WSL2 的虚拟磁盘（<code>ext4.vhdx</code>）位于 C 盘：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-text" data-lang="text">C:\Users\&lt;用户名&gt;\AppData\Local\Packages\...
+</code></pre></td></tr></table>
+</div>
+</div><p>对于系统盘容量有限的开发机器来说，将 WSL 迁移到其他磁盘（如 E 盘）是一个非常合理的选择。</p>
+<p>本文记录一次完整的迁移过程，包括：</p>
+<ul>
+<li>导出 Ubuntu</li>
+<li>注销旧发行版</li>
+<li>导入到 E 盘</li>
+<li>验证环境</li>
+<li>解决常见报错</li>
+<li>保证原有开发环境可继续使用</li>
+</ul>
+<hr>
+<h2 id="为什么迁移-wsl">为什么迁移 WSL</h2>
+<p>WSL2 实际上运行在一个虚拟磁盘中：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-text" data-lang="text">ext4.vhdx
+</code></pre></td></tr></table>
+</div>
+</div><p>常见占用来源：</p>
+<ul>
+<li>Ubuntu 系统本身</li>
+<li>Python 虚拟环境</li>
+<li>Node.js 项目</li>
+<li>Docker 镜像</li>
+<li>数据库文件</li>
+<li>AI 模型</li>
+</ul>
+<p>19GB 对于开发环境来说属于正常范围。</p>
+<p>但是：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-text" data-lang="text">C盘容量有限
+E盘容量充足
+</code></pre></td></tr></table>
+</div>
+</div><p>因此决定迁移。</p>
+<hr>
+<h2 id="查看当前-wsl-状态">查看当前 WSL 状态</h2>
+<p>首先查看当前发行版：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-powershell" data-lang="powershell"><span class="n">wsl</span> <span class="p">-</span><span class="n">-list</span> <span class="p">-</span><span class="n">-verbose</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>例如：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-text" data-lang="text">NAME      STATE    VERSION
+Ubuntu    Running  2
+</code></pre></td></tr></table>
+</div>
+</div><p>确认：</p>
+<ul>
+<li>使用的是 WSL2</li>
+<li>当前发行版名称为 Ubuntu</li>
+</ul>
+<hr>
+<h2 id="第一步关闭-wsl">第一步：关闭 WSL</h2>
+<p>迁移前关闭所有实例：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-powershell" data-lang="powershell"><span class="n">wsl</span> <span class="p">-</span><span class="n">-shutdown</span>
+</code></pre></td></tr></table>
+</div>
+</div><hr>
+<h2 id="第二步导出-ubuntu">第二步：导出 Ubuntu</h2>
+<p>创建备份目录：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-powershell" data-lang="powershell"><span class="n">mkdir</span> <span class="n">E:</span><span class="p">\</span><span class="n">WSL_Backup</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>导出发行版：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-powershell" data-lang="powershell"><span class="n">wsl</span> <span class="p">-</span><span class="n">-export</span> <span class="n">Ubuntu</span> <span class="n">E:</span><span class="p">\</span><span class="n">WSL_Backup</span><span class="p">\</span><span class="n">Ubuntu</span><span class="p">-</span><span class="n">2026</span><span class="p">-</span><span class="n">06</span><span class="p">-</span><span class="n">17</span><span class="p">.</span><span class="n">tar</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>导出完成后确认文件存在：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-powershell" data-lang="powershell"><span class="nb">dir </span><span class="n">E:</span><span class="p">\</span><span class="n">WSL_Backup</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>应该看到：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-text" data-lang="text">Ubuntu-2026-06-17.tar
+</code></pre></td></tr></table>
+</div>
+</div><hr>
+<h2 id="第三步注销旧发行版">第三步：注销旧发行版</h2>
+<p>确认备份成功后：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-powershell" data-lang="powershell"><span class="n">wsl</span> <span class="p">-</span><span class="n">-unregister</span> <span class="n">Ubuntu</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>此操作会：</p>
+<ul>
+<li>删除原来的发行版注册信息</li>
+<li>删除 C 盘中的 <code>ext4.vhdx</code></li>
+</ul>
+<p>此时执行：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-powershell" data-lang="powershell"><span class="n">wsl</span> <span class="n">-l</span> <span class="n">-v</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>Ubuntu 应该已经消失。</p>
+<hr>
+<h2 id="第四步创建新的安装目录">第四步：创建新的安装目录</h2>
+<p>例如：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-powershell" data-lang="powershell"><span class="n">mkdir</span> <span class="n">E:</span><span class="p">\</span><span class="n">WSL</span><span class="p">\</span><span class="n">Ubuntu</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>目录结构：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span><span class="lnt">5
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-text" data-lang="text">E:
+├─WSL
+│  └─Ubuntu
+└─WSL_Backup
+   └─Ubuntu-2026-06-17.tar
+</code></pre></td></tr></table>
+</div>
+</div><hr>
+<h2 id="第五步重新导入到-e-盘">第五步：重新导入到 E 盘</h2>
+<p>这里是最关键的一步。</p>
+<p>正确命令：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-powershell" data-lang="powershell"><span class="n">wsl</span> <span class="p">-</span><span class="n">-import</span> <span class="n">Ubuntu</span> <span class="n">E:</span><span class="p">\</span><span class="n">WSL</span><span class="p">\</span><span class="n">Ubuntu</span> <span class="n">E:</span><span class="p">\</span><span class="n">WSL_Backup</span><span class="p">\</span><span class="n">Ubuntu</span><span class="p">-</span><span class="n">2026</span><span class="p">-</span><span class="n">06</span><span class="p">-</span><span class="n">17</span><span class="p">.</span><span class="n">tar</span> <span class="p">-</span><span class="n">-version</span> <span class="n">2</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>参数说明：</p>
+<table>
+<thead>
+<tr>
+<th>参数</th>
+<th>含义</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Ubuntu</code></td>
+<td>发行版名称</td>
+</tr>
+<tr>
+<td><code>E:\WSL\Ubuntu</code></td>
+<td>安装目录</td>
+</tr>
+<tr>
+<td><code>Ubuntu-2026-06-17.tar</code></td>
+<td>备份文件</td>
+</tr>
+<tr>
+<td><code>--version 2</code></td>
+<td>指定使用 WSL2</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<h2 id="常见错误wsle_invalidarg">常见错误：Wsl/E_INVALIDARG</h2>
+<p>错误示例：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-text" data-lang="text">参数错误
+错误代码: Wsl/E_INVALIDARG
+</code></pre></td></tr></table>
+</div>
+</div><p>原因：命令格式错误。</p>
+<p>例如：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-powershell" data-lang="powershell"><span class="n">wsl</span> <span class="p">-</span><span class="n">-import</span> <span class="n">Ubuntu</span> <span class="n">E:</span><span class="p">\</span><span class="n">WSL_Backup</span><span class="p">\</span><span class="n">Ubuntu</span><span class="p">-</span><span class="n">2026</span><span class="p">-</span><span class="n">06</span><span class="p">-</span><span class="n">17</span><span class="p">.</span><span class="n">tar</span> <span class="p">-</span><span class="n">-version</span> <span class="n">2</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>少了安装目录参数。</p>
+<p>正确格式必须是：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-powershell" data-lang="powershell"><span class="n">wsl</span> <span class="p">-</span><span class="n">-import</span> <span class="n">名称</span> <span class="n">安装目录</span> <span class="n">tar文件</span>
+</code></pre></td></tr></table>
+</div>
+</div><hr>
+<h2 id="验证迁移是否成功">验证迁移是否成功</h2>
+<p>查看发行版：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-powershell" data-lang="powershell"><span class="n">wsl</span> <span class="n">-l</span> <span class="n">-v</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>例如：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-text" data-lang="text">NAME      STATE    VERSION
+Ubuntu    Stopped  2
+</code></pre></td></tr></table>
+</div>
+</div><p>启动：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-powershell" data-lang="powershell"><span class="n">wsl</span> <span class="n">-d</span> <span class="n">Ubuntu</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>进入系统后：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash">whoami
+<span class="nb">pwd</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>如果能够正常进入：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-text" data-lang="text">/home/&lt;user&gt;
+</code></pre></td></tr></table>
+</div>
+</div><p>说明系统已经恢复。</p>
+<hr>
+<h2 id="常见错误wsl_e_distro_not_found">常见错误：WSL_E_DISTRO_NOT_FOUND</h2>
+<p>错误示例：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-text" data-lang="text">不存在具有所提供名称的分发
+
+WSL_E_DISTRO_NOT_FOUND
+</code></pre></td></tr></table>
+</div>
+</div><p>出现原因通常是：</p>
+<ul>
+<li>Windows Terminal 保存了旧配置</li>
+<li>原 Ubuntu 已注销</li>
+<li>新 Ubuntu 已重新导入</li>
+</ul>
+<p>此时：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-powershell" data-lang="powershell"><span class="n">wsl</span> <span class="n">-d</span> <span class="n">Ubuntu</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>如果能够正常进入系统，说明 WSL 本身没问题，仅仅是 Terminal 配置失效。</p>
+<p>解决办法：删除旧 Profile，重新创建：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-text" data-lang="text">wsl.exe -d Ubuntu
+</code></pre></td></tr></table>
+</div>
+</div><p>即可。</p>
+<hr>
+<h2 id="常见错误wsl_e_not_a_linux_distro">常见错误：WSL_E_NOT_A_LINUX_DISTRO</h2>
+<p>错误示例：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-text" data-lang="text">WSL_E_NOT_A_LINUX_DISTRO
+</code></pre></td></tr></table>
+</div>
+</div><p>原因：导入的 tar 文件并不是 Linux RootFS。</p>
+<p>WSL 要求导入的内容必须包含：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-text" data-lang="text">/etc
+/usr
+/bin
+/lib
+</code></pre></td></tr></table>
+</div>
+</div><p>检查方法：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-powershell" data-lang="powershell"><span class="n">tar</span> <span class="n">-tf</span> <span class="n">Ubuntu</span><span class="p">.</span><span class="n">tar</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>正常情况应看到：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-text" data-lang="text">etc/
+usr/
+bin/
+lib/
+</code></pre></td></tr></table>
+</div>
+</div><p>如果看到：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-text" data-lang="text">Users/
+Desktop/
+Documents/
+</code></pre></td></tr></table>
+</div>
+</div><p>说明导出的文件不是 Linux 根文件系统，需要重新导出。</p>
+<hr>
+<h2 id="如何确认数据已经迁移到-e-盘">如何确认数据已经迁移到 E 盘</h2>
+<p>关闭 WSL：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-powershell" data-lang="powershell"><span class="n">wsl</span> <span class="p">-</span><span class="n">-shutdown</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>查看：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-powershell" data-lang="powershell"><span class="nb">dir </span><span class="n">E:</span><span class="p">\</span><span class="n">WSL</span><span class="p">\</span><span class="n">Ubuntu</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>应该能看到：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-text" data-lang="text">ext4.vhdx
+</code></pre></td></tr></table>
+</div>
+</div><p>例如：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-text" data-lang="text">ext4.vhdx 19GB
+</code></pre></td></tr></table>
+</div>
+</div><p>说明 Linux 文件系统已经位于 E 盘。</p>
+<hr>
+<h2 id="验证开发环境是否完整">验证开发环境是否完整</h2>
+<p>迁移完成后建议检查：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash">python3 --version
+node --version
+git --version
+docker --version
+</code></pre></td></tr></table>
+</div>
+</div><p>以及：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash">ls ~
+</code></pre></td></tr></table>
+</div>
+</div><p>确认：</p>
+<ul>
+<li>项目代码存在</li>
+<li>Python 环境存在</li>
+<li>Node 环境存在</li>
+<li>Git 配置正常</li>
+</ul>
+<hr>
+<h2 id="docker-用户特别注意">Docker 用户特别注意</h2>
+<p>如果安装了 Docker Desktop，执行：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-powershell" data-lang="powershell"><span class="n">wsl</span> <span class="n">-l</span> <span class="n">-v</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>可能看到：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-text" data-lang="text">docker-desktop
+docker-desktop-data
+</code></pre></td></tr></table>
+</div>
+</div><p>很多时候真正占空间的是：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-text" data-lang="text">docker-desktop-data
+</code></pre></td></tr></table>
+</div>
+</div><p>其占用甚至可能超过 Ubuntu 本身。</p>
+<p>迁移 Ubuntu 不会自动迁移 Docker 数据，需要单独处理 Docker 存储位置。</p>
+<hr>
+<h2 id="迁移后的目录建议">迁移后的目录建议</h2>
+<p>推荐结构：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span><span class="lnt">5
+</span><span class="lnt">6
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-text" data-lang="text">E:
+└─WSL
+   ├─Ubuntu
+   ├─Debian
+   ├─Arch
+   └─Docker
+</code></pre></td></tr></table>
+</div>
+</div><p>方便后续管理多个 Linux 环境。</p>
+<hr>
+<h2 id="总结">总结</h2>
+<p>本次迁移的核心步骤：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span><span class="lnt">5
+</span><span class="lnt">6
+</span><span class="lnt">7
+</span><span class="lnt">8
+</span><span class="lnt">9
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-powershell" data-lang="powershell"><span class="n">wsl</span> <span class="p">-</span><span class="n">-shutdown</span>
+
+<span class="n">wsl</span> <span class="p">-</span><span class="n">-export</span> <span class="n">Ubuntu</span> <span class="n">E:</span><span class="p">\</span><span class="n">WSL_Backup</span><span class="p">\</span><span class="n">Ubuntu</span><span class="p">.</span><span class="n">tar</span>
+
+<span class="n">wsl</span> <span class="p">-</span><span class="n">-unregister</span> <span class="n">Ubuntu</span>
+
+<span class="n">mkdir</span> <span class="n">E:</span><span class="p">\</span><span class="n">WSL</span><span class="p">\</span><span class="n">Ubuntu</span>
+
+<span class="n">wsl</span> <span class="p">-</span><span class="n">-import</span> <span class="n">Ubuntu</span> <span class="n">E:</span><span class="p">\</span><span class="n">WSL</span><span class="p">\</span><span class="n">Ubuntu</span> <span class="n">E:</span><span class="p">\</span><span class="n">WSL_Backup</span><span class="p">\</span><span class="n">Ubuntu</span><span class="p">.</span><span class="n">tar</span> <span class="p">-</span><span class="n">-version</span> <span class="n">2</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>验证：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-powershell" data-lang="powershell"><span class="n">wsl</span> <span class="n">-d</span> <span class="n">Ubuntu</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>如果能够正常进入系统，并且：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-text" data-lang="text">E:\WSL\Ubuntu\ext4.vhdx
+</code></pre></td></tr></table>
+</div>
+</div><p>已经生成，则说明迁移成功。</p>
+<p>最终结果：</p>
+<ul>
+<li>释放 C 盘空间</li>
+<li>保留原有 Linux 环境</li>
+<li>保留开发工具和项目</li>
+<li>保持 VS Code、Docker、Python 等工作流不变</li>
+</ul>
+<p>对于长期使用 WSL 进行开发的用户，这是最稳妥、最推荐的迁移方案。</p>]]></description>
+</item></channel>
+</rss>

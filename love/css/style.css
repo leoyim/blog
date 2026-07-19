@@ -1,0 +1,430 @@
+	* {
+		margin: 0;
+		padding: 0;
+		box-sizing: border-box;
+	}
+	@font-face {
+		font-family: 'CourierNav';
+		src: url('../fonts/Courier-1.ttf') format('truetype');
+		font-weight: normal;
+		font-style: normal;
+	}
+	body {
+			margin: 0;
+			padding: 0;
+			overflow: hidden;
+			min-height: 100vh;
+			transition: background 2s ease;
+		}
+		body.day {
+			background: linear-gradient(180deg, #87CEEB 0%, #B0E0E6 30%, #FFE4E1 70%, #FFB6C1 100%);
+		}
+		body.spring-day {
+			background: #f7f7f5;
+		}
+	body.night {
+		background-color: #000;
+	}
+	.glass-nav {
+		position: fixed;
+		top: 0;
+		left: 0;
+		width: 100%;
+		height: 48px;
+		z-index: 2000;
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		padding: 0 24px;
+		background: transparent;
+		font-family: 'CourierNav', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+		font-size: 14px;
+		font-weight: 500;
+		color: rgba(255, 255, 255, 0.92);
+		transition: all 0.5s ease;
+	}
+	body.day .glass-nav,
+	body.spring-day .glass-nav {
+		color: rgba(64, 40, 90, 0.92);
+	}
+	body.night .glass-nav {
+		color: rgba(255, 255, 255, 0.92);
+	}
+	.glass-nav > div {
+		display: flex;
+		align-items: center;
+		gap: 16px;
+	}
+	.nav-center {
+		position: absolute;
+		left: 50%;
+		transform: translateX(-50%);
+		white-space: nowrap;
+	}
+	.nav-time {
+		font-variant-numeric: tabular-nums;
+		letter-spacing: 0.02em;
+	}
+	.nav-date,
+	.nav-sun,
+	.nav-weather,
+	.nav-location {
+		opacity: 0.9;
+	}
+
+	@media (max-width: 720px) {
+		.glass-nav {
+			padding: 0 12px;
+			font-size: 11px;
+			height: 40px;
+		}
+		.glass-nav > div {
+			gap: 8px;
+		}
+		.nav-location {
+			display: none;
+		}
+	}
+	canvas {
+			display: block;
+			position: absolute;
+			top: 0;
+			left: 0;
+			z-index: 0;
+		}
+		#timer {
+			position: fixed;
+			top: 50%;
+			left: 50%;
+			transform: translate(-50%, -50%);
+			color: #d65dbb;
+			text-align: center;
+			padding: 20px 40px;
+			font-family: 'Ma Shan Zheng', cursive;
+			font-size: 42px;
+			border-radius: 25px;
+			z-index: 100;
+			pointer-events: none;
+			transition: all 2s ease;
+		}
+		body.day #timer {
+			color: #d65dbb;
+			text-shadow:
+				0 0 10px rgba(214, 93, 187, 0.8),
+				0 0 20px rgba(214, 93, 187, 0.6),
+				0 0 30px rgba(214, 93, 187, 0.4);
+		}
+		body.spring-day #timer {
+			background: linear-gradient(90deg, #4CAF50, #87CEEB);
+			-webkit-background-clip: text;
+			-webkit-text-fill-color: transparent;
+			background-clip: text;
+			filter: drop-shadow(0 0 10px rgba(76, 175, 80, 0.5)) drop-shadow(0 0 20px rgba(135, 206, 235, 0.3));
+		}
+		body.night #timer {
+			color: #FFF;
+			text-shadow:
+				0 0 10px rgba(255, 255, 255, 0.8),
+				0 0 20px rgba(255, 255, 255, 0.6),
+				0 0 30px rgba(255, 255, 255, 0.4),
+				0 0 40px rgba(92, 1, 251, 0.3);
+		}
+		@font-face {
+			font-family: 'PlaywriteDKUloopetGuides-Regular';
+			src: url("../fonts/PlaywriteDKUloopetGuides-Regular.ttf") format("truetype");
+			font-display: swap;
+		}
+		@font-face {
+			font-family: 'FingerPaint-Regular';
+			src: url("../fonts/FingerPaint-Regular.ttf") format("truetype");
+			font-display: swap;
+		}
+		day, times {
+			font-family: 'FingerPaint-Regular';
+			font-size: 72px;
+		}
+		body.day day {
+			color: #ff69b4;
+			text-shadow:
+				0 0 0.3em rgba(255, 20, 147, 0.6),
+				0 0 0.6em rgba(255, 105, 180, 0.4),
+				0 2px 4px rgba(255, 255, 255, 0.8);
+		}
+		body.day times {
+			color: #ff85a2;
+			text-shadow:
+				0 0 0.3em rgba(255, 107, 138, 0.6),
+				0 0 0.6em rgba(255, 133, 162, 0.4),
+				0 2px 4px rgba(255, 255, 255, 0.8);
+		}
+		body.night day {
+			color: #ffdfdf;
+			text-shadow:
+				0 0 0.2em red,
+				0 0 0.4em #f00,
+				0 0 0.6em #ff0000,
+				0 0 0.8em #ff5050,
+				0 0 1em #ff7f7f;
+		}
+		body.night times {
+			color: rgb(207, 255, 239);
+			text-shadow:
+				0 0 0.2em #0fa,
+				0 0 0.4em #0fa,
+				0 0 0.6em #0fa,
+				0 0 0.8em rgb(156, 246, 216),
+				0 0 1em rgb(156, 246, 216);
+		}
+
+		.love {
+			position: fixed;
+			bottom: 0;
+			left: 0;
+			width: 100%;
+			padding: 20px;
+			text-align: center;
+			font-family: PlaywriteDKUloopetGuides-Regular;
+			font-weight: bolder;
+			transition: color 2s ease;
+		}
+		body.day .love {
+			color: rgba(64, 21, 101, 0.997);
+		}
+		body.spring-day .love {
+			color: rgba(100, 80, 60, 0.7);
+		}
+		body.night .love {
+			color: white;
+		}
+
+		.heart {
+			position: absolute;
+			left: 0;
+			top: 0;
+			animation: heart 1s ease-out forwards;
+		}
+		.heart::before {
+			content: "\1F496";
+			position: absolute;
+			top: 0;
+			left: 0;
+			font-size: 18px;
+		}
+		@keyframes heart {
+			0% { transform: scale(0); opacity: 0; }
+			30% { transform: scale(1); opacity: 1; }
+			50% { transform: scale(1.5); opacity: 0.5; }
+			100% { transform: scale(2); opacity: 0; }
+		}
+
+		/* Hidden test panel */
+		#test-panel {
+			display: none;
+			position: fixed;
+			top: 10px;
+			right: 10px;
+			background: rgba(0, 0, 0, 0.8);
+			color: white;
+			padding: 15px;
+			border-radius: 8px;
+			font-family: Arial, sans-serif;
+			font-size: 14px;
+			z-index: 10000;
+			max-width: 300px;
+		}
+		#test-panel.active {
+			display: block;
+		}
+		#test-panel label {
+			display: block;
+			margin: 8px 0 4px 0;
+		}
+		#test-panel input, #test-panel select {
+			width: 100%;
+			padding: 5px;
+			margin-bottom: 10px;
+			border: 1px solid #555;
+			background: #333;
+			color: white;
+			border-radius: 4px;
+		}
+		#test-panel button {
+			width: 100%;
+			padding: 8px;
+			margin-top: 5px;
+			background: #4CAF50;
+			color: white;
+			border: none;
+			border-radius: 4px;
+			cursor: pointer;
+		}
+		#test-panel button:hover {
+			background: #45a049;
+		}
+		#test-panel .hint {
+			font-size: 11px;
+			color: #aaa;
+			margin-top: 10px;
+		}
+
+		/* Spring SVG Scene */
+		.spring-scene {
+			display: none;
+			position: fixed;
+			top: 0;
+			left: 0;
+			width: 100%;
+			height: 100%;
+			z-index: 1;
+			pointer-events: none;
+		}
+		body.spring-day .spring-scene {
+			display: block;
+		}
+
+		/* Willow branch sway */
+		.willow-branch {
+			transform-origin: top center;
+			animation: willowSway 8s ease-in-out infinite;
+		}
+		@keyframes willowSway {
+			0%, 100% { transform: rotate(0deg) translateX(0); }
+			20% { transform: rotate(3deg) translateX(6px); }
+			40% { transform: rotate(-1deg) translateX(-3px); }
+			60% { transform: rotate(4deg) translateX(8px); }
+			80% { transform: rotate(-2deg) translateX(-4px); }
+		}
+
+		/* Swallow flight paths */
+		@keyframes fly1 {
+			0% { transform: translate(0, 0); }
+			10% { transform: translate(60px, -15px); }
+			25% { transform: translate(140px, 10px); }
+			40% { transform: translate(100px, -20px); }
+			55% { transform: translate(180px, 5px); }
+			70% { transform: translate(120px, -10px); }
+			85% { transform: translate(50px, 8px); }
+			100% { transform: translate(0, 0); }
+		}
+		@keyframes fly2 {
+			0% { transform: translate(0, 0); }
+			15% { transform: translate(-80px, 12px); }
+			30% { transform: translate(-50px, -18px); }
+			50% { transform: translate(-120px, 8px); }
+			65% { transform: translate(-70px, -12px); }
+			80% { transform: translate(-30px, 15px); }
+			100% { transform: translate(0, 0); }
+		}
+		@keyframes fly3 {
+			0% { transform: translate(0, 0); }
+			20% { transform: translate(90px, 15px); }
+			40% { transform: translate(50px, -12px); }
+			60% { transform: translate(110px, 8px); }
+			80% { transform: translate(40px, -10px); }
+			100% { transform: translate(0, 0); }
+		}
+		@keyframes fly4 {
+			0% { transform: translate(0, 0); }
+			12% { transform: translate(-50px, -10px); }
+			30% { transform: translate(40px, 12px); }
+			50% { transform: translate(80px, -8px); }
+			70% { transform: translate(30px, 15px); }
+			85% { transform: translate(-20px, -5px); }
+			100% { transform: translate(0, 0); }
+		}
+
+		/* Wing flapping */
+		.wing-left {
+			transform-origin: 0 0;
+			animation: flapLeft 0.6s ease-in-out infinite;
+		}
+		.wing-right {
+			transform-origin: 0 0;
+			animation: flapRight 0.6s ease-in-out infinite;
+		}
+		@keyframes flapLeft {
+			0%, 100% { transform: rotate(0deg); }
+			50% { transform: rotate(-20deg); }
+		}
+		@keyframes flapRight {
+			0%, 100% { transform: rotate(0deg); }
+			50% { transform: rotate(20deg); }
+		}
+
+		/* Falling leaves */
+		@keyframes fall1 {
+			0% { transform: translate(0, 0) rotate(0deg); opacity: 0; }
+			8% { opacity: 0.6; }
+			25% { transform: translate(30px, 150px) rotate(60deg); opacity: 0.55; }
+			50% { transform: translate(60px, 300px) rotate(150deg); opacity: 0.5; }
+			75% { transform: translate(40px, 500px) rotate(250deg); opacity: 0.35; }
+			92% { opacity: 0.15; }
+			100% { transform: translate(80px, 700px) rotate(360deg); opacity: 0; }
+		}
+		@keyframes fall2 {
+			0% { transform: translate(0, 0) rotate(0deg); opacity: 0; }
+			8% { opacity: 0.55; }
+			20% { transform: translate(-25px, 120px) rotate(-50deg); opacity: 0.5; }
+			45% { transform: translate(-50px, 280px) rotate(-130deg); opacity: 0.45; }
+			70% { transform: translate(-30px, 450px) rotate(-220deg); opacity: 0.3; }
+			90% { opacity: 0.1; }
+			100% { transform: translate(-60px, 650px) rotate(-300deg); opacity: 0; }
+		}
+		@keyframes fall3 {
+			0% { transform: translate(0, 0) rotate(0deg); opacity: 0; }
+			6% { opacity: 0.5; }
+			15% { transform: translate(20px, 100px) rotate(40deg); opacity: 0.5; }
+			35% { transform: translate(-15px, 250px) rotate(100deg); opacity: 0.45; }
+			55% { transform: translate(35px, 380px) rotate(180deg); opacity: 0.35; }
+			75% { transform: translate(-10px, 520px) rotate(260deg); opacity: 0.2; }
+			90% { opacity: 0.08; }
+			100% { transform: translate(25px, 680px) rotate(340deg); opacity: 0; }
+		}
+		/* Floating Clouds — multi-layer depth */
+		.clouds-far { opacity: 1; }
+		.clouds-mid { opacity: 1; }
+		.clouds-near { opacity: 1; }
+
+		/* Cloud drop shadow for depth against sky */
+		.clouds-far ellipse,
+		.clouds-mid ellipse,
+		.clouds-near ellipse {
+			filter: drop-shadow(0 2px 3px rgba(100, 160, 200, 0.15));
+		}
+
+		.cloud-float1 { animation: cloudDrift1 55s ease-in-out infinite; }
+		.cloud-float2 { animation: cloudDrift2 70s ease-in-out infinite; }
+		.cloud-float3 { animation: cloudDrift3 48s ease-in-out infinite; }
+		.cloud-float4 { animation: cloudDrift4 62s ease-in-out infinite; }
+		.cloud-float5 { animation: cloudDrift5 45s ease-in-out infinite; }
+
+		@keyframes cloudDrift1 {
+			0%, 100% { transform: translate(0, 0); }
+			25% { transform: translate(28px, -10px); }
+			50% { transform: translate(-12px, 6px); }
+			75% { transform: translate(18px, -4px); }
+		}
+		@keyframes cloudDrift2 {
+			0%, 100% { transform: translate(0, 0); }
+			25% { transform: translate(-18px, 8px); }
+			50% { transform: translate(22px, -12px); }
+			75% { transform: translate(-6px, 4px); }
+		}
+		@keyframes cloudDrift3 {
+			0%, 100% { transform: translate(0, 0); }
+			25% { transform: translate(20px, -6px); }
+			50% { transform: translate(-16px, 10px); }
+			75% { transform: translate(10px, -8px); }
+		}
+		@keyframes cloudDrift4 {
+			0%, 100% { transform: translate(0, 0); }
+			25% { transform: translate(-22px, 10px); }
+			50% { transform: translate(14px, -8px); }
+			75% { transform: translate(-10px, 5px); }
+		}
+		@keyframes cloudDrift5 {
+			0%, 100% { transform: translate(0, 0); }
+			25% { transform: translate(24px, -12px); }
+			50% { transform: translate(-8px, 8px); }
+			75% { transform: translate(16px, -6px); }
+		}

@@ -1,0 +1,776 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="robots" content="noodp" />
+        <meta http-equiv="X-UA-Compatible" content="IE=edge, chrome=1">
+        <title>WSL2 Ubuntu 迁移实战 - LeoYim&#39;s Blog</title><meta name="Description" content="记录一次完整的 WSL2 Ubuntu 迁移过程，包括导出、注销、导入、验证环境以及解决常见报错"><meta property="og:title" content="WSL2 Ubuntu 迁移实战" />
+<meta property="og:description" content="记录一次完整的 WSL2 Ubuntu 迁移过程，包括导出、注销、导入、验证环境以及解决常见报错" />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="http://leoyim.cn/wsl2-ubuntu-migration/" /><meta property="og:image" content="http://leoyim.cn/logo.png"/><meta property="article:section" content="posts" />
+<meta property="article:published_time" content="2026-06-17T18:33:00+08:00" />
+<meta property="article:modified_time" content="2026-06-17T18:33:00+08:00" />
+
+<meta name="twitter:card" content="summary_large_image"/>
+<meta name="twitter:image" content="http://leoyim.cn/logo.png"/>
+
+<meta name="twitter:title" content="WSL2 Ubuntu 迁移实战"/>
+<meta name="twitter:description" content="记录一次完整的 WSL2 Ubuntu 迁移过程，包括导出、注销、导入、验证环境以及解决常见报错"/>
+<meta name="application-name" content="LeoYim">
+<meta name="apple-mobile-web-app-title" content="LeoYim"><meta name="theme-color" content="#ffffff"><meta name="msapplication-TileColor" content="#da532c"><link rel="icon" href="logo.png"><link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png"><link rel="mask-icon" href="/safari-pinned-tab.svg" color="#5bbad5"><link rel="manifest" href="/site.webmanifest"><link rel="canonical" href="http://leoyim.cn/wsl2-ubuntu-migration/" /><link rel="prev" href="http://leoyim.cn/linux-service-configure-enable/" /><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/normalize.css@8.0.1/normalize.min.css"><link rel="stylesheet" href="/css/style.min.be9e646e2ceba6d54850a8e218d99993.css" integrity="md5-vp5kbizrptVIUKjiGNmZkw=="><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@5.13.0/css/all.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/animate.css@3.7.2/animate.min.css"><script type="application/ld+json">
+    {
+        "@context": "http://schema.org",
+        "@type": "BlogPosting",
+        "headline": "WSL2 Ubuntu 迁移实战",
+        "inLanguage": "zh-CN",
+        "mainEntityOfPage": {
+            "@type": "WebPage",
+            "@id": "http:\/\/leoyim.cn\/wsl2-ubuntu-migration\/"
+        },"image": ["http:\/\/leoyim.cn\/images\/Apple-Devices-Preview.png"],"genre": "posts","keywords": "WSL, Ubuntu, Windows, 开发环境","wordcount":  1514 ,
+        "url": "http:\/\/leoyim.cn\/wsl2-ubuntu-migration\/","datePublished": "2026-06-17T18:33:00+08:00","dateModified": "2026-06-17T18:33:00+08:00","license": "This work is licensed under a Creative Commons Attribution-NonCommercial 4.0 International License.","publisher": {
+            "@type": "Organization",
+            "name": "leoyim","logo": "http:\/\/tvax1.sinaimg.cn\/large\/006aCS7gly1gupodmjm55j60cs0cswen02.jpg"},"author": {
+                "@type": "Person",
+                "name": "LeoYim"
+            },"description": "记录一次完整的 WSL2 Ubuntu 迁移过程，包括导出、注销、导入、验证环境以及解决常见报错"
+    }
+    </script></head>
+    <body header-desktop="fixed" header-mobile="auto"><script type="text/javascript">(window.localStorage && localStorage.getItem('theme') ? localStorage.getItem('theme') === 'dark' : ('auto' === 'auto' ? window.matchMedia('(prefers-color-scheme: dark)').matches : 'auto' === 'dark')) && document.body.setAttribute('theme', 'dark');</script>
+
+        <div id="mask"></div><div class="wrapper"><header class="desktop" id="header-desktop">
+    <div class="header-wrapper">
+        <div class="header-title">
+            <a href="/" title="LeoYim&#39;s Blog"><span class="header-title-pre"><i class='fab fa-pied-piper-alt'></i></span>JingShui</a>
+        </div>
+        <div class="menu">
+            <div class="menu-inner"><a class="menu-item" href="/posts/"> 所有文章 </a><a class="menu-item" href="/tags/"> 标签 </a><a class="menu-item" href="/categories/"> 分类 </a><a class="menu-item" href="/about/"> 关于 </a><a class="menu-item" href="/memos.html"> 记录 </a><a class="menu-item" href="https://github.com/leoyim" title="GitHub" rel="noopener noreffer" target="_blank"><i class='fab fa-github fa-fw'></i>  </a><span class="menu-item delimiter"></span><span class="menu-item search" id="search-desktop">
+                        <input type="text" placeholder="搜索文章标题或内容..." id="search-input-desktop">
+                        <a href="javascript:void(0);" class="search-button search-toggle" id="search-toggle-desktop" title="搜索">
+                            <i class="fas fa-search fa-fw"></i>
+                        </a>
+                        <a href="javascript:void(0);" class="search-button search-clear" id="search-clear-desktop" title="清空">
+                            <i class="fas fa-times-circle fa-fw"></i>
+                        </a>
+                        <span class="search-button search-loading" id="search-loading-desktop">
+                            <i class="fas fa-spinner fa-fw fa-spin"></i>
+                        </span>
+                    </span><a href="javascript:void(0);" class="menu-item theme-switch" title="切换主题">
+                    <i class="fas fa-adjust fa-fw"></i>
+                </a>
+            </div>
+        </div>
+    </div>
+</header><header class="mobile" id="header-mobile">
+    <div class="header-container">
+        <div class="header-wrapper">
+            <div class="header-title">
+                <a href="/" title="LeoYim&#39;s Blog"><span class="header-title-pre"><i class='fab fa-pied-piper-alt'></i></span>JingShui</a>
+            </div>
+            <div class="menu-toggle" id="menu-toggle-mobile">
+                <span></span><span></span><span></span>
+            </div>
+        </div>
+        <div class="menu" id="menu-mobile"><div class="search-wrapper">
+                    <div class="search mobile" id="search-mobile">
+                        <input type="text" placeholder="搜索文章标题或内容..." id="search-input-mobile">
+                        <a href="javascript:void(0);" class="search-button search-toggle" id="search-toggle-mobile" title="搜索">
+                            <i class="fas fa-search fa-fw"></i>
+                        </a>
+                        <a href="javascript:void(0);" class="search-button search-clear" id="search-clear-mobile" title="清空">
+                            <i class="fas fa-times-circle fa-fw"></i>
+                        </a>
+                        <span class="search-button search-loading" id="search-loading-mobile">
+                            <i class="fas fa-spinner fa-fw fa-spin"></i>
+                        </span>
+                    </div>
+                    <a href="javascript:void(0);" class="search-cancel" id="search-cancel-mobile">
+                        取消
+                    </a>
+                </div><a class="menu-item" href="/posts/" title="">所有文章</a><a class="menu-item" href="/tags/" title="">标签</a><a class="menu-item" href="/categories/" title="">分类</a><a class="menu-item" href="/about/" title="">关于</a><a class="menu-item" href="/memos.html" title="">记录</a><a class="menu-item" href="https://github.com/leoyim" title="GitHub" rel="noopener noreffer" target="_blank"><i class='fab fa-github fa-fw'></i></a><a href="javascript:void(0);" class="menu-item theme-switch" title="切换主题">
+                <i class="fas fa-adjust fa-fw"></i>
+            </a></div>
+    </div>
+    <script>(function(i,s,o,g,r,a,m){i["DaoVoiceObject"]=r;i[r]=i[r]||function(){(i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;a.charset="utf-8";m.parentNode.insertBefore(a,m)})(window,document,"script",('https:' == document.location.protocol ? 'https:' : 'http:') + "//widget.daovoice.io/widget/b3166d69.js","daovoice")</script>
+</header>
+<div class="search-dropdown desktop">
+    <div id="search-dropdown-desktop"></div>
+</div>
+<div class="search-dropdown mobile">
+    <div id="search-dropdown-mobile"></div>
+</div><main class="main">
+                <div class="container"><div class="toc" id="toc-auto">
+            <h2 class="toc-title">目录</h2>
+            <div class="toc-content" id="toc-content-auto"></div>
+        </div><article class="page single"><h1 class="single-title animated flipInX">WSL2 Ubuntu 迁移实战</h1><div class="post-meta">
+            <div class="post-meta-line"><span class="post-author"><a href="https://leoyim.cn" title="Author" target="_blank" rel="noopener noreffer author" class="author"><i class="fas fa-user-circle fa-fw"></i>LeoYim</a></span>&nbsp;<span class="post-category">收录于 <a href="/categories/%E5%B7%A5%E5%85%B7/"><i class="far fa-folder fa-fw"></i>工具</a></span></div>
+            <div class="post-meta-line"><i class="far fa-calendar-alt fa-fw"></i>&nbsp;<time datetime="2026-06-17">2026-06-17</time>&nbsp;<i class="fas fa-pencil-alt fa-fw"></i>&nbsp;约 1514 字&nbsp;
+                <i class="far fa-clock fa-fw"></i>&nbsp;预计阅读 4 分钟&nbsp;</div>
+        </div><div class="details toc" id="toc-static"  kept="">
+                <div class="details-summary toc-title">
+                    <span>目录</span>
+                    <span><i class="details-icon fas fa-angle-right"></i></span>
+                </div>
+                <div class="details-content toc-content" id="toc-content-static"><nav id="TableOfContents">
+  <ul>
+    <li><a href="#前言">前言</a></li>
+    <li><a href="#为什么迁移-wsl">为什么迁移 WSL</a></li>
+    <li><a href="#查看当前-wsl-状态">查看当前 WSL 状态</a></li>
+    <li><a href="#第一步关闭-wsl">第一步：关闭 WSL</a></li>
+    <li><a href="#第二步导出-ubuntu">第二步：导出 Ubuntu</a></li>
+    <li><a href="#第三步注销旧发行版">第三步：注销旧发行版</a></li>
+    <li><a href="#第四步创建新的安装目录">第四步：创建新的安装目录</a></li>
+    <li><a href="#第五步重新导入到-e-盘">第五步：重新导入到 E 盘</a></li>
+    <li><a href="#常见错误wsle_invalidarg">常见错误：Wsl/E_INVALIDARG</a></li>
+    <li><a href="#验证迁移是否成功">验证迁移是否成功</a></li>
+    <li><a href="#常见错误wsl_e_distro_not_found">常见错误：WSL_E_DISTRO_NOT_FOUND</a></li>
+    <li><a href="#常见错误wsl_e_not_a_linux_distro">常见错误：WSL_E_NOT_A_LINUX_DISTRO</a></li>
+    <li><a href="#如何确认数据已经迁移到-e-盘">如何确认数据已经迁移到 E 盘</a></li>
+    <li><a href="#验证开发环境是否完整">验证开发环境是否完整</a></li>
+    <li><a href="#docker-用户特别注意">Docker 用户特别注意</a></li>
+    <li><a href="#迁移后的目录建议">迁移后的目录建议</a></li>
+    <li><a href="#总结">总结</a></li>
+  </ul>
+</nav></div>
+            </div><div class="content" id="content"><h2 id="前言">前言</h2>
+<p>随着开发环境越来越复杂，WSL（Windows Subsystem for Linux）占用的空间也越来越大。</p>
+<p>最初发现 WSL 占用了约 19GB 空间，而默认情况下 WSL2 的虚拟磁盘（<code>ext4.vhdx</code>）位于 C 盘：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-text" data-lang="text">C:\Users\&lt;用户名&gt;\AppData\Local\Packages\...
+</code></pre></td></tr></table>
+</div>
+</div><p>对于系统盘容量有限的开发机器来说，将 WSL 迁移到其他磁盘（如 E 盘）是一个非常合理的选择。</p>
+<p>本文记录一次完整的迁移过程，包括：</p>
+<ul>
+<li>导出 Ubuntu</li>
+<li>注销旧发行版</li>
+<li>导入到 E 盘</li>
+<li>验证环境</li>
+<li>解决常见报错</li>
+<li>保证原有开发环境可继续使用</li>
+</ul>
+<hr>
+<h2 id="为什么迁移-wsl">为什么迁移 WSL</h2>
+<p>WSL2 实际上运行在一个虚拟磁盘中：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-text" data-lang="text">ext4.vhdx
+</code></pre></td></tr></table>
+</div>
+</div><p>常见占用来源：</p>
+<ul>
+<li>Ubuntu 系统本身</li>
+<li>Python 虚拟环境</li>
+<li>Node.js 项目</li>
+<li>Docker 镜像</li>
+<li>数据库文件</li>
+<li>AI 模型</li>
+</ul>
+<p>19GB 对于开发环境来说属于正常范围。</p>
+<p>但是：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-text" data-lang="text">C盘容量有限
+E盘容量充足
+</code></pre></td></tr></table>
+</div>
+</div><p>因此决定迁移。</p>
+<hr>
+<h2 id="查看当前-wsl-状态">查看当前 WSL 状态</h2>
+<p>首先查看当前发行版：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-powershell" data-lang="powershell"><span class="n">wsl</span> <span class="p">-</span><span class="n">-list</span> <span class="p">-</span><span class="n">-verbose</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>例如：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-text" data-lang="text">NAME      STATE    VERSION
+Ubuntu    Running  2
+</code></pre></td></tr></table>
+</div>
+</div><p>确认：</p>
+<ul>
+<li>使用的是 WSL2</li>
+<li>当前发行版名称为 Ubuntu</li>
+</ul>
+<hr>
+<h2 id="第一步关闭-wsl">第一步：关闭 WSL</h2>
+<p>迁移前关闭所有实例：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-powershell" data-lang="powershell"><span class="n">wsl</span> <span class="p">-</span><span class="n">-shutdown</span>
+</code></pre></td></tr></table>
+</div>
+</div><hr>
+<h2 id="第二步导出-ubuntu">第二步：导出 Ubuntu</h2>
+<p>创建备份目录：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-powershell" data-lang="powershell"><span class="n">mkdir</span> <span class="n">E:</span><span class="p">\</span><span class="n">WSL_Backup</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>导出发行版：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-powershell" data-lang="powershell"><span class="n">wsl</span> <span class="p">-</span><span class="n">-export</span> <span class="n">Ubuntu</span> <span class="n">E:</span><span class="p">\</span><span class="n">WSL_Backup</span><span class="p">\</span><span class="n">Ubuntu</span><span class="p">-</span><span class="n">2026</span><span class="p">-</span><span class="n">06</span><span class="p">-</span><span class="n">17</span><span class="p">.</span><span class="n">tar</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>导出完成后确认文件存在：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-powershell" data-lang="powershell"><span class="nb">dir </span><span class="n">E:</span><span class="p">\</span><span class="n">WSL_Backup</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>应该看到：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-text" data-lang="text">Ubuntu-2026-06-17.tar
+</code></pre></td></tr></table>
+</div>
+</div><hr>
+<h2 id="第三步注销旧发行版">第三步：注销旧发行版</h2>
+<p>确认备份成功后：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-powershell" data-lang="powershell"><span class="n">wsl</span> <span class="p">-</span><span class="n">-unregister</span> <span class="n">Ubuntu</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>此操作会：</p>
+<ul>
+<li>删除原来的发行版注册信息</li>
+<li>删除 C 盘中的 <code>ext4.vhdx</code></li>
+</ul>
+<p>此时执行：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-powershell" data-lang="powershell"><span class="n">wsl</span> <span class="n">-l</span> <span class="n">-v</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>Ubuntu 应该已经消失。</p>
+<hr>
+<h2 id="第四步创建新的安装目录">第四步：创建新的安装目录</h2>
+<p>例如：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-powershell" data-lang="powershell"><span class="n">mkdir</span> <span class="n">E:</span><span class="p">\</span><span class="n">WSL</span><span class="p">\</span><span class="n">Ubuntu</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>目录结构：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span><span class="lnt">5
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-text" data-lang="text">E:
+├─WSL
+│  └─Ubuntu
+└─WSL_Backup
+   └─Ubuntu-2026-06-17.tar
+</code></pre></td></tr></table>
+</div>
+</div><hr>
+<h2 id="第五步重新导入到-e-盘">第五步：重新导入到 E 盘</h2>
+<p>这里是最关键的一步。</p>
+<p>正确命令：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-powershell" data-lang="powershell"><span class="n">wsl</span> <span class="p">-</span><span class="n">-import</span> <span class="n">Ubuntu</span> <span class="n">E:</span><span class="p">\</span><span class="n">WSL</span><span class="p">\</span><span class="n">Ubuntu</span> <span class="n">E:</span><span class="p">\</span><span class="n">WSL_Backup</span><span class="p">\</span><span class="n">Ubuntu</span><span class="p">-</span><span class="n">2026</span><span class="p">-</span><span class="n">06</span><span class="p">-</span><span class="n">17</span><span class="p">.</span><span class="n">tar</span> <span class="p">-</span><span class="n">-version</span> <span class="n">2</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>参数说明：</p>
+<table>
+<thead>
+<tr>
+<th>参数</th>
+<th>含义</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Ubuntu</code></td>
+<td>发行版名称</td>
+</tr>
+<tr>
+<td><code>E:\WSL\Ubuntu</code></td>
+<td>安装目录</td>
+</tr>
+<tr>
+<td><code>Ubuntu-2026-06-17.tar</code></td>
+<td>备份文件</td>
+</tr>
+<tr>
+<td><code>--version 2</code></td>
+<td>指定使用 WSL2</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<h2 id="常见错误wsle_invalidarg">常见错误：Wsl/E_INVALIDARG</h2>
+<p>错误示例：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-text" data-lang="text">参数错误
+错误代码: Wsl/E_INVALIDARG
+</code></pre></td></tr></table>
+</div>
+</div><p>原因：命令格式错误。</p>
+<p>例如：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-powershell" data-lang="powershell"><span class="n">wsl</span> <span class="p">-</span><span class="n">-import</span> <span class="n">Ubuntu</span> <span class="n">E:</span><span class="p">\</span><span class="n">WSL_Backup</span><span class="p">\</span><span class="n">Ubuntu</span><span class="p">-</span><span class="n">2026</span><span class="p">-</span><span class="n">06</span><span class="p">-</span><span class="n">17</span><span class="p">.</span><span class="n">tar</span> <span class="p">-</span><span class="n">-version</span> <span class="n">2</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>少了安装目录参数。</p>
+<p>正确格式必须是：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-powershell" data-lang="powershell"><span class="n">wsl</span> <span class="p">-</span><span class="n">-import</span> <span class="n">名称</span> <span class="n">安装目录</span> <span class="n">tar文件</span>
+</code></pre></td></tr></table>
+</div>
+</div><hr>
+<h2 id="验证迁移是否成功">验证迁移是否成功</h2>
+<p>查看发行版：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-powershell" data-lang="powershell"><span class="n">wsl</span> <span class="n">-l</span> <span class="n">-v</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>例如：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-text" data-lang="text">NAME      STATE    VERSION
+Ubuntu    Stopped  2
+</code></pre></td></tr></table>
+</div>
+</div><p>启动：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-powershell" data-lang="powershell"><span class="n">wsl</span> <span class="n">-d</span> <span class="n">Ubuntu</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>进入系统后：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash">whoami
+<span class="nb">pwd</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>如果能够正常进入：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-text" data-lang="text">/home/&lt;user&gt;
+</code></pre></td></tr></table>
+</div>
+</div><p>说明系统已经恢复。</p>
+<hr>
+<h2 id="常见错误wsl_e_distro_not_found">常见错误：WSL_E_DISTRO_NOT_FOUND</h2>
+<p>错误示例：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-text" data-lang="text">不存在具有所提供名称的分发
+
+WSL_E_DISTRO_NOT_FOUND
+</code></pre></td></tr></table>
+</div>
+</div><p>出现原因通常是：</p>
+<ul>
+<li>Windows Terminal 保存了旧配置</li>
+<li>原 Ubuntu 已注销</li>
+<li>新 Ubuntu 已重新导入</li>
+</ul>
+<p>此时：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-powershell" data-lang="powershell"><span class="n">wsl</span> <span class="n">-d</span> <span class="n">Ubuntu</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>如果能够正常进入系统，说明 WSL 本身没问题，仅仅是 Terminal 配置失效。</p>
+<p>解决办法：删除旧 Profile，重新创建：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-text" data-lang="text">wsl.exe -d Ubuntu
+</code></pre></td></tr></table>
+</div>
+</div><p>即可。</p>
+<hr>
+<h2 id="常见错误wsl_e_not_a_linux_distro">常见错误：WSL_E_NOT_A_LINUX_DISTRO</h2>
+<p>错误示例：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-text" data-lang="text">WSL_E_NOT_A_LINUX_DISTRO
+</code></pre></td></tr></table>
+</div>
+</div><p>原因：导入的 tar 文件并不是 Linux RootFS。</p>
+<p>WSL 要求导入的内容必须包含：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-text" data-lang="text">/etc
+/usr
+/bin
+/lib
+</code></pre></td></tr></table>
+</div>
+</div><p>检查方法：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-powershell" data-lang="powershell"><span class="n">tar</span> <span class="n">-tf</span> <span class="n">Ubuntu</span><span class="p">.</span><span class="n">tar</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>正常情况应看到：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-text" data-lang="text">etc/
+usr/
+bin/
+lib/
+</code></pre></td></tr></table>
+</div>
+</div><p>如果看到：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-text" data-lang="text">Users/
+Desktop/
+Documents/
+</code></pre></td></tr></table>
+</div>
+</div><p>说明导出的文件不是 Linux 根文件系统，需要重新导出。</p>
+<hr>
+<h2 id="如何确认数据已经迁移到-e-盘">如何确认数据已经迁移到 E 盘</h2>
+<p>关闭 WSL：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-powershell" data-lang="powershell"><span class="n">wsl</span> <span class="p">-</span><span class="n">-shutdown</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>查看：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-powershell" data-lang="powershell"><span class="nb">dir </span><span class="n">E:</span><span class="p">\</span><span class="n">WSL</span><span class="p">\</span><span class="n">Ubuntu</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>应该能看到：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-text" data-lang="text">ext4.vhdx
+</code></pre></td></tr></table>
+</div>
+</div><p>例如：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-text" data-lang="text">ext4.vhdx 19GB
+</code></pre></td></tr></table>
+</div>
+</div><p>说明 Linux 文件系统已经位于 E 盘。</p>
+<hr>
+<h2 id="验证开发环境是否完整">验证开发环境是否完整</h2>
+<p>迁移完成后建议检查：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash">python3 --version
+node --version
+git --version
+docker --version
+</code></pre></td></tr></table>
+</div>
+</div><p>以及：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash">ls ~
+</code></pre></td></tr></table>
+</div>
+</div><p>确认：</p>
+<ul>
+<li>项目代码存在</li>
+<li>Python 环境存在</li>
+<li>Node 环境存在</li>
+<li>Git 配置正常</li>
+</ul>
+<hr>
+<h2 id="docker-用户特别注意">Docker 用户特别注意</h2>
+<p>如果安装了 Docker Desktop，执行：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-powershell" data-lang="powershell"><span class="n">wsl</span> <span class="n">-l</span> <span class="n">-v</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>可能看到：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-text" data-lang="text">docker-desktop
+docker-desktop-data
+</code></pre></td></tr></table>
+</div>
+</div><p>很多时候真正占空间的是：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-text" data-lang="text">docker-desktop-data
+</code></pre></td></tr></table>
+</div>
+</div><p>其占用甚至可能超过 Ubuntu 本身。</p>
+<p>迁移 Ubuntu 不会自动迁移 Docker 数据，需要单独处理 Docker 存储位置。</p>
+<hr>
+<h2 id="迁移后的目录建议">迁移后的目录建议</h2>
+<p>推荐结构：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span><span class="lnt">5
+</span><span class="lnt">6
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-text" data-lang="text">E:
+└─WSL
+   ├─Ubuntu
+   ├─Debian
+   ├─Arch
+   └─Docker
+</code></pre></td></tr></table>
+</div>
+</div><p>方便后续管理多个 Linux 环境。</p>
+<hr>
+<h2 id="总结">总结</h2>
+<p>本次迁移的核心步骤：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span><span class="lnt">5
+</span><span class="lnt">6
+</span><span class="lnt">7
+</span><span class="lnt">8
+</span><span class="lnt">9
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-powershell" data-lang="powershell"><span class="n">wsl</span> <span class="p">-</span><span class="n">-shutdown</span>
+
+<span class="n">wsl</span> <span class="p">-</span><span class="n">-export</span> <span class="n">Ubuntu</span> <span class="n">E:</span><span class="p">\</span><span class="n">WSL_Backup</span><span class="p">\</span><span class="n">Ubuntu</span><span class="p">.</span><span class="n">tar</span>
+
+<span class="n">wsl</span> <span class="p">-</span><span class="n">-unregister</span> <span class="n">Ubuntu</span>
+
+<span class="n">mkdir</span> <span class="n">E:</span><span class="p">\</span><span class="n">WSL</span><span class="p">\</span><span class="n">Ubuntu</span>
+
+<span class="n">wsl</span> <span class="p">-</span><span class="n">-import</span> <span class="n">Ubuntu</span> <span class="n">E:</span><span class="p">\</span><span class="n">WSL</span><span class="p">\</span><span class="n">Ubuntu</span> <span class="n">E:</span><span class="p">\</span><span class="n">WSL_Backup</span><span class="p">\</span><span class="n">Ubuntu</span><span class="p">.</span><span class="n">tar</span> <span class="p">-</span><span class="n">-version</span> <span class="n">2</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>验证：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-powershell" data-lang="powershell"><span class="n">wsl</span> <span class="n">-d</span> <span class="n">Ubuntu</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>如果能够正常进入系统，并且：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-text" data-lang="text">E:\WSL\Ubuntu\ext4.vhdx
+</code></pre></td></tr></table>
+</div>
+</div><p>已经生成，则说明迁移成功。</p>
+<p>最终结果：</p>
+<ul>
+<li>释放 C 盘空间</li>
+<li>保留原有 Linux 环境</li>
+<li>保留开发工具和项目</li>
+<li>保持 VS Code、Docker、Python 等工作流不变</li>
+</ul>
+<p>对于长期使用 WSL 进行开发的用户，这是最稳妥、最推荐的迁移方案。</p></div><div class="post-footer" id="post-footer">
+    <div class="post-info">
+        <div class="post-info-line">
+            <div class="post-info-mod">
+                <span>更新于 2026-06-17</span>
+            </div>
+            <div class="post-info-license"></div>
+        </div>
+        <div class="post-info-line">
+            <div class="post-info-md"></div>
+            <div class="post-info-share">
+                <span><a href="javascript:void(0);" title="分享到 Twitter" data-sharer="twitter" data-url="http://leoyim.cn/wsl2-ubuntu-migration/" data-title="WSL2 Ubuntu 迁移实战" data-hashtags="WSL,Ubuntu,Windows,开发环境"><i class="fab fa-twitter fa-fw"></i></a><a href="javascript:void(0);" title="分享到 Facebook" data-sharer="facebook" data-url="http://leoyim.cn/wsl2-ubuntu-migration/" data-hashtag="WSL"><i class="fab fa-facebook-square fa-fw"></i></a><a href="javascript:void(0);" title="分享到 Pinterest" data-sharer="pinterest" data-url="http://leoyim.cn/wsl2-ubuntu-migration/" data-description="记录一次完整的 WSL2 Ubuntu 迁移过程，包括导出、注销、导入、验证环境以及解决常见报错"><i class="fab fa-pinterest fa-fw"></i></a><a href="javascript:void(0);" title="分享到 Reddit" data-sharer="reddit" data-url="http://leoyim.cn/wsl2-ubuntu-migration/"><i class="fab fa-reddit fa-fw"></i></a><a href="javascript:void(0);" title="分享到 Flipboard" data-sharer="flipboard" data-url="http://leoyim.cn/wsl2-ubuntu-migration/" data-title="WSL2 Ubuntu 迁移实战"><i class="fab fa-flipboard fa-fw"></i></a><a href="javascript:void(0);" title="分享到 微博" data-sharer="weibo" data-url="http://leoyim.cn/wsl2-ubuntu-migration/" data-title="WSL2 Ubuntu 迁移实战"><i class="fab fa-weibo fa-fw"></i></a><a href="javascript:void(0);" title="分享到 百度" data-sharer="baidu" data-url="http://leoyim.cn/wsl2-ubuntu-migration/" data-title="WSL2 Ubuntu 迁移实战"><i data-svg-src="https://cdn.jsdelivr.net/npm/simple-icons@2.14.0/icons/baidu.svg"></i></a><a href="javascript:void(0);" title="分享到 Evernote" data-sharer="evernote" data-url="http://leoyim.cn/wsl2-ubuntu-migration/" data-title="WSL2 Ubuntu 迁移实战"><i class="fab fa-evernote fa-fw"></i></a></span>
+            </div>
+        </div>
+    </div>
+
+    <div class="post-info-more">
+        <section class="post-tags"><i class="fas fa-tags fa-fw"></i>&nbsp;<a href="/tags/wsl/">WSL</a>,&nbsp;<a href="/tags/ubuntu/">Ubuntu</a>,&nbsp;<a href="/tags/windows/">Windows</a>,&nbsp;<a href="/tags/%E5%BC%80%E5%8F%91%E7%8E%AF%E5%A2%83/">开发环境</a></section>
+        <section>
+            <span><a href="javascript:void(0);" onclick="window.history.back();">返回</a></span>&nbsp;|&nbsp;<span><a href="/">主页</a></span>
+        </section>
+    </div>
+
+    <div class="post-nav"><a href="/linux-service-configure-enable/" class="prev" rel="prev" title="Linux自启动服务配置和启用"><i class="fas fa-angle-left fa-fw"></i>Linux自启动服务配置和启用</a></div>
+</div>
+<div id="comments"><div id="disqus_thread" class="comment"></div><noscript>
+                Please enable JavaScript to view the comments powered by <a href="https://disqus.com/?ref_noscript">Disqus</a>.
+            </noscript></div></article></div>
+            </main><footer class="footer">
+        <div class="footer-container"><div class="footer-line">由 <a href="https://gohugo.io/" target="_blank" rel="noopener noreffer" title="Hugo 0.88.1">Hugo</a> 强力驱动 | 主题 - <a href="https://github.com/dillonzq/LoveIt" target="_blank" rel="noopener noreffer" title="LoveIt 0.2.10"><i class="far fa-kiss-wink-heart fa-fw"></i> LoveIt</a>
+                </div><div class="footer-line"><i class="far fa-copyright fa-fw"></i><span itemprop="copyrightYear">2019 - 2026</span><span class="author" itemprop="copyrightHolder">&nbsp;<a href="mailto:leo.yanwb@outlook.com" target="_blank">leoyim</a></span>&nbsp;|&nbsp;<span class="license"><a rel="license external nofollow noopener noreffer" href="https://creativecommons.org/licenses/by-nc/4.0/" target="_blank">CC BY-NC 4.0</a></span><span class="icp-splitter">&nbsp;|&nbsp;</span><br class="icp-br"/>
+                    <span class="icp"><a href='http://beian.miit.gov.cn/'>豫ICP备2023037428号-1</a></span></div>
+        </div>
+        <script>
+            daovoice('init', {
+            app_id: "b3166d69"
+            });
+            daovoice('update');
+        </script>
+    </footer></div>
+
+        <div id="fixed-buttons"><a href="#" id="back-to-top" class="fixed-button" title="回到顶部">
+                <i class="fas fa-arrow-up fa-fw"></i>
+            </a><a href="#" id="view-comments" class="fixed-button" title="查看评论">
+                <i class="fas fa-comment fa-fw"></i>
+            </a>
+        </div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/lightgallery.js@1.2.0/dist/css/lightgallery.min.css"><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/object-fit-images@3.2.4/dist/ofi.min.js"></script><script type="text/javascript" src="https://leoyim.disqus.com/embed.js" defer></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/smooth-scroll@16.1.3/dist/smooth-scroll.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/autocomplete.js@0.37.1/dist/autocomplete.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/algoliasearch@4.2.0/dist/algoliasearch-lite.umd.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/lazysizes@5.2.2/lazysizes.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/twemoji@13.0.0/dist/twemoji.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/lightgallery.js@1.2.0/dist/js/lightgallery.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/lg-thumbnail.js@1.2.0/dist/lg-thumbnail.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/lg-zoom.js@1.2.0/dist/lg-zoom.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/clipboard@2.0.6/dist/clipboard.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/sharer.js@0.4.0/sharer.min.js"></script><script type="text/javascript">window.config={"code":{"copyTitle":"复制到剪贴板","maxShownLines":1000},"comment":{},"lightGallery":{"actualSize":false,"exThumbImage":"data-thumbnail","hideBarsDelay":2000,"selector":".lightgallery","speed":400,"thumbContHeight":80,"thumbWidth":80,"thumbnail":true},"search":{"algoliaAppID":"YFBNEDZD4V","algoliaIndex":"index.zh-cn","algoliaSearchKey":"7ba668fbb896bf1350eb7d0fc3e4f394","highlightTag":"em","maxResultLength":10,"noResultsFound":"没有找到结果","snippetLength":50,"type":"algolia"},"twemoji":true};</script><script type="text/javascript" src="/js/theme.min.7bc7989e979c4a19d97db3ab311a80fe.js" integrity="md5-e8eYnpecShnZfbOrMRqA/g=="></script></body>
+</html>

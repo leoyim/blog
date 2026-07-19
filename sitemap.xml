@@ -2,12 +2,18 @@
     xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
     xmlns:xhtml="http://www.w3.org/1999/xhtml"
     ><url>
-            <loc>http://leoyim.cn/categories/</loc><lastmod>2024-09-19T09:13:03&#43;08:00</lastmod><changefreq>weekly</changefreq><priority>0.5</priority></url><url>
-            <loc>http://leoyim.cn/</loc><lastmod>2024-09-19T09:13:03&#43;08:00</lastmod><changefreq>weekly</changefreq><priority>0.5</priority></url><url>
+            <loc>http://leoyim.cn/categories/</loc><lastmod>2026-06-17T18:33:00&#43;08:00</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url><url>
+            <loc>http://leoyim.cn/</loc><lastmod>2026-06-17T18:33:00&#43;08:00</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url><url>
+            <loc>http://leoyim.cn/posts/</loc><lastmod>2026-06-17T18:33:00&#43;08:00</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url><url>
+            <loc>http://leoyim.cn/tags/</loc><lastmod>2026-06-17T18:33:00&#43;08:00</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url><url>
+            <loc>http://leoyim.cn/tags/ubuntu/</loc><lastmod>2026-06-17T18:33:00&#43;08:00</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url><url>
+            <loc>http://leoyim.cn/tags/windows/</loc><lastmod>2026-06-17T18:33:00&#43;08:00</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url><url>
+            <loc>http://leoyim.cn/tags/wsl/</loc><lastmod>2026-06-17T18:33:00&#43;08:00</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url><url>
+            <loc>http://leoyim.cn/wsl2-ubuntu-migration/</loc><lastmod>2026-06-17T18:33:00&#43;08:00</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url><url>
+            <loc>http://leoyim.cn/categories/%E5%B7%A5%E5%85%B7/</loc><lastmod>2026-06-17T18:33:00&#43;08:00</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url><url>
+            <loc>http://leoyim.cn/tags/%E5%BC%80%E5%8F%91%E7%8E%AF%E5%A2%83/</loc><lastmod>2026-06-17T18:33:00&#43;08:00</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url><url>
             <loc>http://leoyim.cn/tags/linux/</loc><lastmod>2024-09-19T09:13:03&#43;08:00</lastmod><changefreq>weekly</changefreq><priority>0.5</priority></url><url>
             <loc>http://leoyim.cn/linux-service-configure-enable/</loc><lastmod>2024-09-19T09:13:03&#43;08:00</lastmod><changefreq>weekly</changefreq><priority>0.5</priority></url><url>
-            <loc>http://leoyim.cn/posts/</loc><lastmod>2024-09-19T09:13:03&#43;08:00</lastmod><changefreq>weekly</changefreq><priority>0.5</priority></url><url>
-            <loc>http://leoyim.cn/tags/</loc><lastmod>2024-09-19T09:13:03&#43;08:00</lastmod><changefreq>weekly</changefreq><priority>0.5</priority></url><url>
             <loc>http://leoyim.cn/categories/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F/</loc><lastmod>2024-09-19T09:13:03&#43;08:00</lastmod><changefreq>weekly</changefreq><priority>0.5</priority></url><url>
             <loc>http://leoyim.cn/tags/docker/</loc><lastmod>2024-09-06T22:10:40&#43;08:00</lastmod><changefreq>weekly</changefreq><priority>0.5</priority></url><url>
             <loc>http://leoyim.cn/docker-cheat-sheet/</loc><lastmod>2024-09-06T22:10:40&#43;08:00</lastmod><changefreq>weekly</changefreq><priority>0.5</priority></url><url>
