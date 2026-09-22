@@ -4,7 +4,242 @@
         <link>http://leoyim.cn/posts/</link>
         <description>所有文章 | LeoYim&#39;s Blog</description>
         <generator>Hugo -- gohugo.io</generator><language>zh-CN</language><managingEditor>leo.yanwb@outlook.com (leoyim)</managingEditor>
-            <webMaster>leo.yanwb@outlook.com (leoyim)</webMaster><copyright>This work is licensed under a Creative Commons Attribution-NonCommercial 4.0 International License.</copyright><lastBuildDate>Wed, 17 Jun 2026 18:33:00 &#43;0800</lastBuildDate><atom:link href="http://leoyim.cn/posts/" rel="self" type="application/rss+xml" /><item>
+            <webMaster>leo.yanwb@outlook.com (leoyim)</webMaster><copyright>This work is licensed under a Creative Commons Attribution-NonCommercial 4.0 International License.</copyright><lastBuildDate>Tue, 22 Sep 2026 14:00:00 &#43;0800</lastBuildDate><atom:link href="http://leoyim.cn/posts/" rel="self" type="application/rss+xml" /><item>
+    <title>把 HTML 页面发布为博客文章</title>
+    <link>http://leoyim.cn/publish-html-as-blog-post/</link>
+    <pubDate>Tue, 22 Sep 2026 14:00:00 &#43;0800</pubDate>
+    <author>作者</author>
+    <guid>http://leoyim.cn/publish-html-as-blog-post/</guid>
+    <description><![CDATA[<h2 id="前言">前言</h2>
+<p>这个博客一直只支持写 Markdown。但 AI 生成的内容越来越常是完整的 HTML —— 交互式图表、可视化报告、小工具、自带设计风格的页面，这些用 Markdown 都表达不出来。</p>
+<p>于是给博客加了一种新的内容类型：<strong>直接把 HTML 文档当作一篇文章发布</strong>。</p>
+<p>技术上只有一个核心约束值得先说清楚：一份完整的 HTML 文档自带 <code>&lt;!DOCTYPE&gt;</code>、<code>&lt;head&gt;</code> 和自己的全局样式（<code>*</code>、<code>body</code>、<code>h1</code> 这类选择器）。如果直接粘贴进 Markdown 正文，会同时发生两件坏事：</p>
+<ul>
+<li>提前闭合博客模板的 DOM 结构，整页布局错乱；</li>
+<li>全局样式与主题互相覆盖，导航栏、字体、代码块样式都可能被改掉。</li>
+</ul>
+<p>所以关键不是&quot;怎么把 HTML 塞进去&quot;，而是<strong>怎么隔离</strong>。隔离做对了，剩下的都是细节。</p>
+<h2 id="三种发布方式">三种发布方式</h2>
+<table>
+<thead>
+<tr>
+<th>方式</th>
+<th>适用场景</th>
+<th>进文章列表</th>
+<th>评论区 / 目录</th>
+<th>独立 URL</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>① 嵌入文章（iframe shortcode）</td>
+<td>文章主体是文字，HTML 是配图或配工具</td>
+<td>是</td>
+<td>正常</td>
+<td>有，位于文章目录下</td>
+</tr>
+<tr>
+<td>② <code>raw</code> 布局整页输出</td>
+<td>HTML 本身就是那篇文章</td>
+<td>是（需手写 <code>summary</code>）</td>
+<td>无</td>
+<td>有，就是文章 URL</td>
+</tr>
+<tr>
+<td>③ 放进 <code>static/</code></td>
+<td>纯工具页，不打算进文章系统</td>
+<td>否</td>
+<td>无</td>
+<td>有</td>
+</tr>
+</tbody>
+</table>
+<p>三种方式可以混用，日常用得最多的是 ①。</p>
+<h2 id="方式一嵌入到文章里">方式一：嵌入到文章里</h2>
+<h3 id="目录结构">目录结构</h3>
+<p>把文章做成 page bundle，HTML 与正文平级放：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-text" data-lang="text">content/posts/publish-html-as-blog-post/
+├── index.zh-cn.md      # 文章正文
+└── demo.html           # AI 生成的 HTML，原样保存，不做任何修改
+</code></pre></td></tr></table>
+</div>
+</div><p>与 <code>index.zh-cn.md</code> 同目录的所有文件都会成为这个页面的<strong>资源（page resources）</strong>，随文章一起发布。HTML 文件不需要改后缀、不需要剥掉 <code>&lt;head&gt;</code>、不需要把 CSS 内联化。</p>
+<h3 id="在正文中调用">在正文中调用</h3>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-markdown" data-lang="markdown">{{<span class="p">&lt;</span> <span class="nt">rawhtml</span> <span class="err">&#34;</span><span class="na">demo</span><span class="err">.</span><span class="na">html</span><span class="err">&#34;</span> <span class="p">&gt;</span>}}
+</code></pre></td></tr></table>
+</div>
+</div><p>下面是本篇文章自带的一个真实示例：示例内部可以点击交互，右下角的图标按钮可以打开完整页面。</p>
+<div class="rawhtml-embed">
+    <iframe class="rawhtml-iframe" src="/publish-html-as-blog-post/demo.html" title="把 HTML 页面发布为博客文章" loading="lazy"
+        style="width: 100%; border: 0; display: block; background: #fff; min-height: 480px;" data-rawhtml-fit="true"></iframe>
+    <a class="rawhtml-embed-open" href="/publish-html-as-blog-post/demo.html" target="_blank" rel="noopener noreferrer" title="在新标签页中打开" aria-label="在新标签页中打开">
+        <i class="fas fa-external-link-alt" aria-hidden="true"></i>
+    </a>
+</div>
+<h3 id="参数说明">参数说明</h3>
+<table>
+<thead>
+<tr>
+<th>参数</th>
+<th>必填</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>第 1 个位置参数 / <code>src</code></td>
+<td>是</td>
+<td>资源文件名；或 <code>/html/xxx.html</code> 站内路径；或完整外链 URL</td>
+</tr>
+<tr>
+<td><code>height</code></td>
+<td>否</td>
+<td>固定高度（px）。传了就关闭高度自适应</td>
+</tr>
+<tr>
+<td><code>label</code></td>
+<td>否</td>
+<td>右下角悬浮按钮的提示文案（tooltip 与无障碍标签），默认&quot;在新标签页中打开&quot;</td>
+</tr>
+<tr>
+<td><code>title</code></td>
+<td>否</td>
+<td>iframe 的 <code>title</code>，用于无障碍，默认取文章标题</td>
+</tr>
+</tbody>
+</table>
+<p>行为细节：</p>
+<ul>
+<li>参数是<strong>文件名</strong>时只在当前文章的资源里查找，找不到会让 Hugo 构建直接失败，避免出现死链；</li>
+<li>默认自适应高度：同源 iframe 可以读取内部 <code>scrollHeight</code>，并用 <code>ResizeObserver</code> 跟随内容变化；底部兜底 <code>min-height: 480px</code>；</li>
+<li>如果 HTML 是 <code>html, body { height: 100% }</code> 的整屏应用，内部高度恒等于视口高度，自适应没有意义，请显式传 <code>height=&quot;800&quot;</code> 这类固定值；</li>
+<li>嵌入外链（跨域）时读不到内部高度，会保留 <code>min-height</code>。</li>
+</ul>
+<h3 id="独立页面展示">独立页面展示</h3>
+<p>每个页面资源都有自己的 URL，iframe 右下角会自动浮现一个&quot;在新标签页打开&quot;的图标按钮，点开就是原样的 HTML 页面：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-text" data-lang="text">https://leoyim.cn/publish-html-as-blog-post/demo.html
+</code></pre></td></tr></table>
+</div>
+</div><p>相对路径引用的图片、字体等资源都能正常工作，因为它们和 HTML 在同一目录下一起发布。</p>
+<h2 id="方式二raw-布局让-html-就是文章本身">方式二：raw 布局，让 HTML 就是文章本身</h2>
+<p>方式一的文章 URL 打开时是套着主题外壳的（导航栏、标题、目录、评论）。如果希望这篇文章的正文<strong>完全由 HTML 决定</strong>，比如整屏的交互体验，就用 <code>layout: &quot;raw&quot;</code>。</p>
+<p>新建 <code>content/posts/my-report/index.html</code>（注意后缀是 <code>.html</code>，不是 <code>.md</code>）：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-html" data-lang="html">---
+title: &#34;一份交互式报告&#34;
+date: 2026-09-22T14:00:00+08:00
+layout: &#34;raw&#34;
+summary: &#34;这里是列表页显示的摘要，因为正文是 HTML，Hugo 自动生成的摘要通常不可读，建议手写。&#34;
+hiddenFromSearch: true
+---
+
+<span class="cp">&lt;!DOCTYPE html&gt;</span>
+<span class="p">&lt;</span><span class="nt">html</span> <span class="na">lang</span><span class="o">=</span><span class="s">&#34;zh-CN&#34;</span><span class="p">&gt;</span>
+<span class="p">&lt;</span><span class="nt">head</span><span class="p">&gt;</span>
+    <span class="p">&lt;</span><span class="nt">meta</span> <span class="na">charset</span><span class="o">=</span><span class="s">&#34;utf-8&#34;</span><span class="p">&gt;</span>
+    <span class="p">&lt;</span><span class="nt">title</span><span class="p">&gt;</span>一份交互式报告<span class="p">&lt;/</span><span class="nt">title</span><span class="p">&gt;</span>
+    <span class="p">&lt;</span><span class="nt">style</span><span class="p">&gt;</span><span class="c">/* 你/ AI 自己的全局样式 */</span><span class="p">&lt;/</span><span class="nt">style</span><span class="p">&gt;</span>
+<span class="p">&lt;/</span><span class="nt">head</span><span class="p">&gt;</span>
+<span class="p">&lt;</span><span class="nt">body</span><span class="p">&gt;</span>
+    <span class="c">&lt;!-- 整个页面的内容 --&gt;</span>
+<span class="p">&lt;/</span><span class="nt">body</span><span class="p">&gt;</span>
+<span class="p">&lt;/</span><span class="nt">html</span><span class="p">&gt;</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>要点：</p>
+<ul>
+<li><code>index.html</code> 里 front matter 之后的内容，Hugo 不做 Markdown 渲染，原样输出；</li>
+<li><code>layout: &quot;raw&quot;</code> 对应新增的 <code>layouts/posts/raw.html</code> —— 一个只有一行 <code>{{ .Content }}</code> 的极简布局，不套导航栏、页脚、目录、评论；</li>
+<li>文章 URL 就是这份 HTML，所以是干净的独立地址，而不是 <code>xxx.html</code> 这样的资源地址；</li>
+<li>由于正文是 HTML，列表页摘要和搜索索引都会受影响，建议手写 <code>summary</code> 并设置 <code>hiddenFromSearch: true</code>。</li>
+</ul>
+<h2 id="方式三放进-static-的独立页面">方式三：放进 <code>static/</code> 的独立页面</h2>
+<p>如果这个 HTML 只是工具页，不希望它出现在文章列表、RSS、搜索里：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-text" data-lang="text">static/html/tool.html  →  https://leoyim.cn/html/tool.html
+</code></pre></td></tr></table>
+</div>
+</div><p><code>static/</code> 下的文件会被原样复制到站点根目录，零配置。适合&quot;临时给别人看一个页面&quot;的场景。</p>
+<h2 id="注意事项">注意事项</h2>
+<ul>
+<li><strong>样式隔离是单向的</strong>：iframe 里的样式出不来，主题样式也进不去。iframe 内部不继承博客的字体和深色模式，HTML 必须自带完整样式；</li>
+<li><strong>深色模式</strong>：iframe 默认设置了白色底（<code>background: #fff</code>），避免透明底的 HTML 在主题深色背景下文字看不清；</li>
+<li><strong>搜索</strong>：iframe 里的内容不会被 Algolia 索引（索引来自渲染后的文字），也不会进目录 TOC。建议在正文里补一段文字摘要；</li>
+<li><strong>RSS</strong>：<code>rssFullText = true</code> 时，阅读器里无法渲染 iframe，订阅者只会看到正文文字，必要时注明&quot;访问原文查看交互内容&quot;；</li>
+<li><strong>评论与分享</strong>：方式一下完全正常，指向的是文章 URL 本身；</li>
+<li><strong>安全</strong>：iframe 没有加 <code>sandbox</code>，因为需要执行脚本。只嵌入自己生成或可信来源的 HTML，不要嵌入来路不明的文档；</li>
+<li><strong>字数统计</strong>：iframe 内容不计入 <code>WordCount</code>，正文太短时文章列表上的&quot;阅读时间&quot;会失真。</li>
+</ul>
+<h2 id="小结">小结</h2>
+<p>整个改造只涉及三个文件：</p>
+<table>
+<thead>
+<tr>
+<th>文件</th>
+<th>作用</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>layouts/shortcodes/rawhtml.html</code></td>
+<td>iframe 嵌入一篇 HTML，含高度自适应与独立页面链接</td>
+</tr>
+<tr>
+<td><code>layouts/posts/raw.html</code></td>
+<td><code>layout: &quot;raw&quot;</code> 时整页原样输出</td>
+</tr>
+<tr>
+<td><code>content/posts/&lt;slug&gt;/xxx.html</code></td>
+<td>HTML 与 <code>index.&lt;lang&gt;.md</code> 平级放置即成为页面资源</td>
+</tr>
+</tbody>
+</table>
+<p>日常使用只有两步：把 AI 生成的 HTML 存成与 <code>index.md</code> 同目录的文件，然后在正文里写一行 <code>{{&lt; rawhtml &quot;xxx.html&quot; &gt;}}</code>。样式、脚本、<code>&lt;!DOCTYPE&gt;</code> 全都不用动。</p>
+]]></description>
+</item><item>
     <title>WSL2 Ubuntu 迁移实战</title>
     <link>http://leoyim.cn/wsl2-ubuntu-migration/</link>
     <pubDate>Wed, 17 Jun 2026 18:33:00 &#43;0800</pubDate>
@@ -2132,14 +2367,6 @@ cherry   Ready    &lt;none&gt;          32h   v1.28.2
     <author>作者</author>
     <guid>http://leoyim.cn/golang-basic-notes/</guid>
     <description><![CDATA[<p>题图源：<a href="https://technology.riotgames.com/news/leveraging-golang-game-development-and-operations" title="LEVERAGING GOLANG FOR GAME DEVELOPMENT AND OPERATIONS" target="_blank" rel="noopener noreffer">LEVERAGING GOLANG FOR GAME DEVELOPMENT AND OPERATIONS</a></p>
-]]></description>
-</item><item>
-    <title>Flutter 入门</title>
-    <link>http://leoyim.cn/flutter-getting-started/</link>
-    <pubDate>Tue, 08 Aug 2023 20:28:29 &#43;0800</pubDate>
-    <author>作者</author>
-    <guid>http://leoyim.cn/flutter-getting-started/</guid>
-    <description><![CDATA[<p>题图源：<a href="https://www.nomtek.com/blog/flutter-development" title="Flutter Development — Great Pick for Digital Products" target="_blank" rel="noopener noreffer">Flutter Development — Great Pick for Digital Products</a></p>
 ]]></description>
 </item><item>
     <title>Webassembly 入门</title>

@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AI 生成的交互式 HTML 示例</title>
+<style>
+    /* 这些是典型的“AI 生成 HTML”写法：全局重置 + 自定义配色，
+       如果直接贴进 Markdown 正文会污染整个博客主题，
+       放在 iframe 里则完全隔离。 */
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+        font-family: -apple-system, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+        background: radial-gradient(circle at 15% 0%, #1d4ed8 0%, #0f172a 55%, #020617 100%);
+        color: #e2e8f0;
+        padding: 32px 24px 40px;
+        line-height: 1.65;
+    }
+
+    .badge {
+        display: inline-block;
+        padding: 4px 12px;
+        border: 1px solid rgba(96, 165, 250, .5);
+        border-radius: 999px;
+        color: #93c5fd;
+        font-size: 12px;
+        letter-spacing: .04em;
+    }
+
+    h1 { margin: 16px 0 10px; font-size: 26px; letter-spacing: -.01em; }
+    .lead { max-width: 60ch; color: #94a3b8; font-size: 15px; }
+
+    .grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+        gap: 14px;
+        margin: 26px 0;
+    }
+
+    .card {
+        background: rgba(148, 163, 184, .08);
+        border: 1px solid rgba(148, 163, 184, .18);
+        border-radius: 12px;
+        padding: 16px;
+    }
+
+    .card .k { color: #94a3b8; font-size: 13px; }
+    .card .v { margin-top: 6px; font-size: 24px; font-weight: 600; color: #f8fafc; }
+    .card .v em { font-style: normal; font-size: 13px; color: #4ade80; }
+
+    .panel {
+        background: rgba(15, 23, 42, .6);
+        border: 1px solid rgba(148, 163, 184, .18);
+        border-radius: 14px;
+        padding: 20px;
+    }
+
+    .panel-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        flex-wrap: wrap;
+        margin-bottom: 18px;
+    }
+
+    .panel-head h2 { font-size: 16px; font-weight: 600; }
+
+    button {
+        font: inherit;
+        font-size: 14px;
+        padding: 8px 16px;
+        border: 0;
+        border-radius: 8px;
+        color: #0b1220;
+        background: linear-gradient(135deg, #7dd3fc, #38bdf8);
+        cursor: pointer;
+    }
+
+    button:hover { filter: brightness(1.08); }
+
+    .bar-row {
+        display: grid;
+        grid-template-columns: 72px 1fr 52px;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 10px;
+        font-size: 13px;
+    }
+
+    .track { height: 10px; border-radius: 999px; background: rgba(148, 163, 184, .18); overflow: hidden; }
+    .fill { height: 100%; border-radius: 999px; background: linear-gradient(90deg, #38bdf8, #818cf8); transition: width .45s ease; }
+    .num { text-align: right; color: #cbd5e1; font-variant-numeric: tabular-nums; }
+
+    @media (max-width: 480px) {
+        body { padding: 24px 16px 32px; }
+        h1 { font-size: 21px; }
+    }
+</style>
+</head>
+<body>
+
+<span class="badge">iframe 内独立运行</span>
+<h1>HTML 文档也可以是一篇博客文章</h1>
+<p class="lead">
+    这个页面是 AI 一次性生成的完整 HTML 文档，保留了自己的全局样式、配色和脚本。
+    它被 <code>rawhtml</code> shortcode 以 iframe 形式嵌入文章，没有给博客主题带来任何影响。
+</p>
+
+<div class="grid">
+    <div class="card"><div class="k">样式隔离</div><div class="v">100% <em>无污染</em></div></div>
+    <div class="card"><div class="k">自适应高度</div><div class="v" id="height-value">计算中</div></div>
+    <div class="card"><div class="k">交互脚本</div><div class="v">已运行 <em>✓</em></div></div>
+</div>
+
+<div class="panel">
+    <div class="panel-head">
+        <h2>点击按钮重新生成一组数据</h2>
+        <button id="roll" type="button">随机刷新</button>
+    </div>
+    <div id="chart"></div>
+</div>
+
+<script>
+    (function () {
+        var labels = ['样式隔离', '脚本执行', '懒加载', '响应式', '主题无关', '可独立访问'];
+        var chart = document.getElementById('chart');
+
+        function render() {
+            var rows = labels.map(function (name) {
+                var value = Math.round(45 + Math.random() * 55);
+                return '<div class="bar-row">' +
+                    '<span>' + name + '</span>' +
+                    '<span class="track"><span class="fill" style="width:' + value + '%"></span></span>' +
+                    '<span class="num">' + value + '%</span>' +
+                    '</div>';
+            });
+            chart.innerHTML = rows.join('');
+        }
+
+        document.getElementById('roll').addEventListener('click', render);
+        render();
+
+        // 把自身高度回填到上面的卡片里，顺便证明脚本确实在运行
+        document.getElementById('height-value').textContent = document.body.scrollHeight + ' px';
+    })();
+</script>
+</body>
+</html>
