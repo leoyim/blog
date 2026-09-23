@@ -1,0 +1,587 @@
+<rss xmlns:atom="http://www.w3.org/2005/Atom" version="2.0">
+    <channel>
+        <title>prometheus - 标签 - LeoYim&#39;s Blog</title>
+        <link>http://leoyim.cn/tags/prometheus/</link>
+        <description>prometheus - 标签 - LeoYim&#39;s Blog</description>
+        <generator>Hugo -- gohugo.io</generator><language>zh-CN</language><managingEditor>leo.yanwb@outlook.com (leoyim)</managingEditor>
+            <webMaster>leo.yanwb@outlook.com (leoyim)</webMaster><copyright>This work is licensed under a Creative Commons Attribution-NonCommercial 4.0 International License.</copyright><lastBuildDate>Mon, 03 Aug 2026 15:10:00 &#43;0800</lastBuildDate><atom:link href="http://leoyim.cn/tags/prometheus/" rel="self" type="application/rss+xml" /><item>
+    <title>Jenkins JVM 监控仪表板设计与实践</title>
+    <link>http://leoyim.cn/jenkins-jvm-monitoring-dashboard/</link>
+    <pubDate>Mon, 03 Aug 2026 15:10:00 &#43;0800</pubDate>
+    <author>作者</author>
+    <guid>http://leoyim.cn/jenkins-jvm-monitoring-dashboard/</guid>
+    <description><![CDATA[<blockquote>
+<p>目标：为 Jenkins（CI/CD 控制器）建立一套可观测的 JVM 运行时监控，覆盖内存、GC、线程、类加载、运行时资源五大维度，既能一眼看总体健康，又能下钻定位异常。
+本笔记记录「怎么从零设计这套监控」，而非某次操作流水账，可直接照此搭建或迁移到其他 JVM 服务。</p>
+</blockquote>
+<h2 id="一整体链路">一、整体链路</h2>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span><span class="lnt">5
+</span><span class="lnt">6
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback">Jenkins (插件暴露 /prometheus)
+       │ jvm_* + vm_* 指标
+       ▼
+Prometheus  (按 metrics_path 抓取，多实例靠 label 区分)
+       ▼
+Grafana  (数据源 = Prometheus；模板变量 $instance 切换实例)
+</code></pre></td></tr></table>
+</div>
+</div><ul>
+<li><strong>指标来源</strong>：Jenkins 安装 Prometheus metrics 插件后，在 <code>/prometheus</code> 端点暴露 <code>jvm_*</code>（JVM JMX 指标，内存/GC/线程/类加载）与 <code>vm_*</code>（Dropwizard VM 指标，CPU/FD/uptime/heap 比率）两族指标。两者都带 <code>instance</code> 标签，可合并使用。</li>
+<li><strong>数据源</strong>：Grafana 里建一个名为 <code>Prometheus</code> 的数据源（按名称引用，不要按 uid，避免迁移时 uid 失配）。Docker 部署 Grafana 时 URL 用 <code>host.docker.internal:9090</code>，宿主机直连用 <code>localhost:9090</code>。</li>
+<li><strong>多实例切换</strong>：仪表板顶部放模板变量 <code>$instance = label_values(jvm_info, instance)</code>，开启 <code>multi + includeAll</code>、<code>allValue=&quot;.*&quot;</code>，所有面板查询带 <code>instance=&quot;$instance&quot;</code> 过滤。新增 Jenkins target 后下拉自动列出。</li>
+</ul>
+<!--more-->
+<h2 id="二如何提炼指标">二、如何提炼指标</h2>
+<p>抓取端点一个服务就能吐出上百个指标名，实测本端点暴露 <strong>52 个 <code>jvm_*</code> + 349 个 <code>vm_*</code> = 401 个指标名</strong>，不能全堆上去。需要提炼。</p>
+<p><strong>为什么 401 个里只选 24 个？</strong></p>
+<ul>
+<li><code>vm_*</code> 大量是<strong>预聚合窗口变体</strong>（<code>_history</code> / <code>_window_5m</code> / <code>_window_15m</code> / <code>_window_1h</code> / <code>_x100</code>），与 Grafana 自己用 <code>rate()</code> 算的速率重复，选基础量即可。</li>
+<li><code>vm_memory_pools_*</code> 是<strong>按池拆分</strong>的变体（G1 Eden/Old/Survivor/Metaspace/CodeHeap…），已被 <code>jvm_memory_pool_bytes_*</code> 覆盖。</li>
+<li><code>jvm_*</code> 存在<strong>重复命名</strong>（如 <code>jvm_threads_current</code> 与 <code>jvm_threads_live_threads</code>、<code>jvm_memory_bytes_used</code> 与 <code>jvm_memory_used_bytes</code>），选其一。</li>
+<li>去重后<strong>精选 24 个核心指标</strong>，覆盖五大维度，每个都配评价标准。</li>
+</ul>
+<p><strong>提炼四步法：</strong></p>
+<ol>
+<li><strong>定维度</strong>，按 JVM 子系统划「要看什么」：内存 / GC / 线程 / 类加载 / 运行时资源。</li>
+<li><strong>选类型</strong>，看当前状态用 gauge；看趋势用 <code>rate(counter)[5m]</code>；看健康度优先比率（0~1）而非裸字节。</li>
+<li><strong>去重聚合</strong>，同类信号选代表（线程状态用一个 bargauge 汇总，不为每状态画一条线）；相关绝对量合并到一张图加系列名（堆 Used/Committed/Max 三条线对比上限）。</li>
+<li><strong>配评价标准</strong>，能量化的给阈值（比率类 0.8/0.9 三段）；不能量化的给定性判据（死锁 &gt;0 即严重；BLOCKED 高 = 锁竞争）。</li>
+</ol>
+<blockquote>
+<p>时间窗口统一用 <code>[5m]</code>，不要裸用 <code>$__rate_interval</code>（部分版本下 Prometheus 会 400）。</p>
+</blockquote>
+<h2 id="三指标清单--解释--评价标准24-个">三、指标清单 · 解释 · 评价标准（24 个）</h2>
+<blockquote>
+<p>下列为仪表板实际监控的 24 个核心指标，按维度分组。<code>$instance</code> 为模板变量，实际查询均带 <code>instance=&quot;$instance&quot;</code> 过滤。</p>
+</blockquote>
+<h3 id="31-内存9-个">3.1 内存（9 个）</h3>
+<table>
+<thead>
+<tr>
+<th>指标</th>
+<th>类型</th>
+<th>含义</th>
+<th>PromQL</th>
+<th>评价标准</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>jvm_memory_bytes_used</code></td>
+<td>gauge</td>
+<td>已用内存（heap/nonheap）</td>
+<td><code>jvm_memory_bytes_used{area=&quot;heap&quot;}</code></td>
+<td>配合 max 看使用率，逼近上限即告警</td>
+</tr>
+<tr>
+<td><code>jvm_memory_bytes_committed</code></td>
+<td>gauge</td>
+<td>JVM 已向 OS 申请的内存</td>
+<td><code>jvm_memory_bytes_committed{area=&quot;heap&quot;}</code></td>
+<td>committed 持续上涨 → 堆在扩张</td>
+</tr>
+<tr>
+<td><code>jvm_memory_bytes_max</code></td>
+<td>gauge</td>
+<td>内存上限</td>
+<td><code>jvm_memory_bytes_max{area=&quot;heap&quot;}</code></td>
+<td>警戒线；Used→Max 距离越小越危险</td>
+</tr>
+<tr>
+<td><code>jvm_memory_pool_bytes_used</code></td>
+<td>gauge</td>
+<td>各内存池已用（Eden/Old/Metaspace…）</td>
+<td><code>jvm_memory_pool_bytes_used</code></td>
+<td>Old 池逼近上限 → GC 压力前兆</td>
+</tr>
+<tr>
+<td><code>jvm_memory_pool_bytes_max</code></td>
+<td>gauge</td>
+<td>各内存池上限</td>
+<td><code>jvm_memory_pool_bytes_max</code></td>
+<td>与 used 对比看各池余量</td>
+</tr>
+<tr>
+<td><code>jvm_memory_pool_allocated_bytes_total</code></td>
+<td>counter</td>
+<td>累计分配字节数</td>
+<td><code>rate(jvm_memory_pool_allocated_bytes_total[5m])</code></td>
+<td>分配速率突增 → 可能触发频繁 GC</td>
+</tr>
+<tr>
+<td><code>jvm_buffer_pool_used_bytes</code></td>
+<td>gauge</td>
+<td>直接内存缓冲池已用</td>
+<td><code>jvm_buffer_pool_used_bytes</code></td>
+<td>对比 capacity，看堆外内存</td>
+</tr>
+<tr>
+<td><code>jvm_buffer_pool_capacity_bytes</code></td>
+<td>gauge</td>
+<td>缓冲池容量</td>
+<td><code>jvm_buffer_pool_capacity_bytes</code></td>
+<td>作为缓冲池上限警戒</td>
+</tr>
+<tr>
+<td><code>vm_memory_heap_usage</code></td>
+<td>gauge</td>
+<td>堆使用率（0~1）</td>
+<td><code>vm_memory_heap_usage</code></td>
+<td><strong>&lt;0.8 健康 / 0.8~0.9 告警 / &gt;0.9 危险</strong></td>
+</tr>
+</tbody>
+</table>
+<h3 id="32-垃圾回收-gc2-个">3.2 垃圾回收 GC（2 个）</h3>
+<table>
+<thead>
+<tr>
+<th>指标</th>
+<th>类型</th>
+<th>含义</th>
+<th>PromQL</th>
+<th>评价标准</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>jvm_gc_collection_seconds_count</code></td>
+<td>counter</td>
+<td>GC 累计次数</td>
+<td><code>rate(jvm_gc_collection_seconds_count[5m])</code></td>
+<td>频率突升 = 频繁 GC，分配压力大</td>
+</tr>
+<tr>
+<td><code>jvm_gc_collection_seconds_sum</code></td>
+<td>counter</td>
+<td>GC 累计停顿时长</td>
+<td><code>rate(jvm_gc_collection_seconds_sum[5m])</code></td>
+<td>停顿占比高 → 影响响应/吞吐</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p>按 <code>gc</code> 标签区分收集器（如 G1 Young/Old），可分别看或汇总。</p>
+</blockquote>
+<h3 id="33-线程7-个">3.3 线程（7 个）</h3>
+<table>
+<thead>
+<tr>
+<th>指标</th>
+<th>类型</th>
+<th>含义</th>
+<th>PromQL</th>
+<th>评价标准</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>jvm_threads_current</code></td>
+<td>gauge</td>
+<td>活跃线程数</td>
+<td><code>jvm_threads_current</code></td>
+<td>与基线对比，突增/突降即异常</td>
+</tr>
+<tr>
+<td><code>jvm_threads_daemon</code></td>
+<td>gauge</td>
+<td>守护线程数</td>
+<td><code>jvm_threads_daemon</code></td>
+<td>一般稳定，参考用</td>
+</tr>
+<tr>
+<td><code>jvm_threads_peak</code></td>
+<td>gauge</td>
+<td>峰值线程数</td>
+<td><code>jvm_threads_peak</code></td>
+<td>参考最大并发承载</td>
+</tr>
+<tr>
+<td><code>jvm_threads_state</code></td>
+<td>gauge</td>
+<td>各状态线程数</td>
+<td><code>jvm_threads_state{state=&quot;BLOCKED&quot;}</code></td>
+<td><strong>BLOCKED 高 = 锁竞争</strong>；WAITING 异常高 = 资源等待</td>
+</tr>
+<tr>
+<td><code>jvm_threads_deadlocked</code></td>
+<td>gauge</td>
+<td>死锁线程数（循环依赖）</td>
+<td><code>sum(jvm_threads_deadlocked or vector(0))</code></td>
+<td><strong>&gt;0 即严重</strong></td>
+</tr>
+<tr>
+<td><code>jvm_threads_deadlocked_monitor</code></td>
+<td>gauge</td>
+<td>死锁线程数（监视器）</td>
+<td><code>sum(jvm_threads_deadlocked_monitor or vector(0))</code></td>
+<td><strong>&gt;0 即严重</strong></td>
+</tr>
+<tr>
+<td><code>jvm_threads_started_total</code></td>
+<td>counter</td>
+<td>累计启动线程数</td>
+<td><code>rate(jvm_threads_started_total[5m])</code></td>
+<td>创建速率持续高 = 线程池未复用/泄漏</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p>死锁面板把两个死锁指标合并：<code>(sum(jvm_threads_deadlocked or vector(0)) + sum(jvm_threads_deadlocked_monitor or vector(0)))</code>。
+注意：活跃线程数用 <code>jvm_threads_current</code>，不要用 <code>jvm_threads_live_threads</code>（重复命名，后者无数据）。</p>
+</blockquote>
+<h3 id="34-类加载3-个">3.4 类加载（3 个）</h3>
+<table>
+<thead>
+<tr>
+<th>指标</th>
+<th>类型</th>
+<th>含义</th>
+<th>PromQL</th>
+<th>评价标准</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>jvm_classes_currently_loaded</code></td>
+<td>gauge</td>
+<td>当前已加载类数</td>
+<td><code>jvm_classes_currently_loaded</code></td>
+<td>持续上涨 → 可能类/类加载器泄漏</td>
+</tr>
+<tr>
+<td><code>jvm_classes_loaded_total</code></td>
+<td>counter</td>
+<td>累计加载类总数</td>
+<td><code>jvm_classes_loaded_total</code></td>
+<td>配合卸载数看加载 churn</td>
+</tr>
+<tr>
+<td><code>jvm_classes_unloaded_total</code></td>
+<td>counter</td>
+<td>累计卸载类总数</td>
+<td><code>jvm_classes_unloaded_total</code></td>
+<td>卸载频繁 → 动态类/热部署，关注 Metaspace</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p>注意区分：<code>jvm_classes_currently_loaded</code>（gauge，当前值）与 <code>jvm_classes_loaded_total</code>（counter，累计值）是两个不同指标，别混用。</p>
+</blockquote>
+<h3 id="35-运行时资源3-个--jvm_info">3.5 运行时资源（3 个 + jvm_info）</h3>
+<table>
+<thead>
+<tr>
+<th>指标</th>
+<th>类型</th>
+<th>含义</th>
+<th>PromQL</th>
+<th>评价标准</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>vm_cpu_load</code></td>
+<td>gauge</td>
+<td>JVM 进程 CPU 负载（0~1）</td>
+<td><code>vm_cpu_load</code></td>
+<td><strong>&lt;0.8 / 0.8~0.9 / &gt;0.9</strong></td>
+</tr>
+<tr>
+<td><code>vm_file_descriptor_ratio</code></td>
+<td>gauge</td>
+<td>文件描述符使用率（0~1）</td>
+<td><code>vm_file_descriptor_ratio</code></td>
+<td>接近 1 → 可能打不开文件/连接</td>
+</tr>
+<tr>
+<td><code>vm_uptime_milliseconds</code></td>
+<td>gauge</td>
+<td>进程运行时长</td>
+<td><code>vm_uptime_milliseconds</code></td>
+<td>参考稳定性；异常低 = 重启过</td>
+</tr>
+<tr>
+<td><code>jvm_info</code></td>
+<td>info</td>
+<td>JVM 版本信息（常量 1）</td>
+<td><code>jvm_info</code></td>
+<td>不做图，仅用于 <code>label_values(jvm_info, instance)</code> 取实例列表</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p><code>vm_memory_heap_usage</code> 既出现在内存区（timeseries 趋势）也出现在资源占比区（gauge 仪表），是同一指标两种展示。</p>
+</blockquote>
+<h3 id="36-端点全量指标说明未监控的为何不选">3.6 端点全量指标说明（未监控的为何不选）</h3>
+<p>端点共 401 个指标名，除上述 24 个外，其余主要分四类，均<strong>刻意不选</strong>：</p>
+<ul>
+<li><strong>预聚合窗口变体</strong>：<code>vm_*_history</code> / <code>vm_*_window_5m</code> / <code>_15m</code> / <code>_1h</code> / <code>_x100</code>，与 Grafana <code>rate()</code> 重复。</li>
+<li><strong>按池拆分变体</strong>：<code>vm_memory_pools_&lt;池名&gt;_*</code>（G1 Eden/Old/Survivor/Metaspace/CodeHeap…），已被 <code>jvm_memory_pool_bytes_*</code> 覆盖。</li>
+<li><strong>重复命名</strong>：<code>jvm_threads_live_threads</code> / <code>jvm_memory_used_bytes</code> / <code>jvm_classes_loaded_classes</code> 等，与所选指标同义，选其一避免冗余。</li>
+<li><strong>GC pause 细分</strong>：<code>jvm_gc_pause_seconds_*</code> / <code>jvm_gc_live_data_size_bytes</code> / <code>jvm_gc_max_data_size_bytes</code> / <code>jvm_gc_overhead_percent</code>，进阶 GC 分析用，本版未纳入，需要时可加。</li>
+</ul>
+<h2 id="四如何配置-prometheus-采集">四、如何配置 Prometheus 采集</h2>
+<h3 id="41-jenkins-侧">4.1 Jenkins 侧</h3>
+<ol>
+<li>安装 <strong>Prometheus metrics plugin</strong>（<code>org.jenkins-ci.plugins:prometheus</code>）。</li>
+<li>插件默认在 <code>http://&lt;jenkins&gt;/prometheus</code> 暴露指标（含 <code>jvm_*</code> 与 <code>vm_*</code>）。</li>
+<li>（可选）在插件配置页调整暴露的指标范围；如需鉴权，配置允许的路径/认证。</li>
+</ol>
+<h3 id="42-prometheus-侧prometheusyml">4.2 Prometheus 侧（prometheus.yml）</h3>
+<p>单实例：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span><span class="lnt">5
+</span><span class="lnt">6
+</span><span class="lnt">7
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-yaml" data-lang="yaml"><span class="nt">scrape_configs</span><span class="p">:</span><span class="w">
+</span><span class="w">  </span>- <span class="nt">job_name</span><span class="p">:</span><span class="w"> </span><span class="l">jenkins</span><span class="w">
+</span><span class="w">    </span><span class="nt">metrics_path</span><span class="p">:</span><span class="w"> </span><span class="l">/prometheus</span><span class="w">
+</span><span class="w">    </span><span class="nt">static_configs</span><span class="p">:</span><span class="w">
+</span><span class="w">      </span>- <span class="nt">targets</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s1">&#39;jenkins-1:8080&#39;</span><span class="p">]</span><span class="w">
+</span><span class="w">        </span><span class="nt">labels</span><span class="p">:</span><span class="w">
+</span><span class="w">          </span><span class="nt">instance</span><span class="p">:</span><span class="w"> </span><span class="l">jks1</span><span class="w">
+</span></code></pre></td></tr></table>
+</div>
+</div><p>多实例（同一 <code>metrics_path</code>，靠 <code>instance</code> label 区分）：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-yaml" data-lang="yaml"><span class="nt">scrape_configs</span><span class="p">:</span><span class="w">
+</span><span class="w">  </span>- <span class="nt">job_name</span><span class="p">:</span><span class="w"> </span><span class="l">jenkins</span><span class="w">
+</span><span class="w">    </span><span class="nt">metrics_path</span><span class="p">:</span><span class="w"> </span><span class="l">/prometheus</span><span class="w">
+</span><span class="w">    </span><span class="nt">static_configs</span><span class="p">:</span><span class="w">
+</span><span class="w">      </span>- <span class="nt">targets</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s1">&#39;jenkins-1:8080&#39;</span><span class="p">]</span><span class="w">
+</span><span class="w">        </span><span class="nt">labels</span><span class="p">:</span><span class="w">
+</span><span class="w">          </span><span class="nt">instance</span><span class="p">:</span><span class="w"> </span><span class="l">jks1</span><span class="w">
+</span><span class="w">      </span>- <span class="nt">targets</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s1">&#39;jenkins-2:8080&#39;</span><span class="p">]</span><span class="w">
+</span><span class="w">        </span><span class="nt">labels</span><span class="p">:</span><span class="w">
+</span><span class="w">          </span><span class="nt">instance</span><span class="p">:</span><span class="w"> </span><span class="l">jks2</span><span class="w">
+</span></code></pre></td></tr></table>
+</div>
+</div><blockquote>
+<p>也可用 <code>relabel_configs</code> 把 <code>__address__</code> 重写为业务名做 <code>instance</code>。</p>
+</blockquote>
+<h3 id="43-验证采集">4.3 验证采集</h3>
+<ul>
+<li>Prometheus <code>/targets</code> → 对应 job <code>health=up</code></li>
+<li><code>curl http://prometheus:9090/api/v1/query?query=up{job=&quot;jenkins&quot;}</code> → 值为 1</li>
+<li><code>curl http://jenkins:8080/prometheus | grep '^jvm_'</code> → 看暴露了哪些指标名</li>
+<li>Grafana 数据源代理：<code>/api/datasources/proxy/&lt;id&gt;/api/v1/query?query=...</code> 直接查某指标</li>
+</ul>
+<h2 id="五如何设计仪表板">五、如何设计仪表板</h2>
+<h3 id="51-分区设计原则">5.1 分区设计原则</h3>
+<ul>
+<li><strong>按子系统分 row</strong>，从上到下：概览 → 内存 → GC → 线程 → 类加载 → 运行时 → 比率仪表 → 分布。</li>
+<li><strong>信息密度递减</strong>：顶部是最重要的「总览快照」，下面是趋势细节与分布。</li>
+<li>每个分区用 <code>row</code> 收纳，折叠/展开可控；分区标题用「中文(英文)」双语便于检索。</li>
+</ul>
+<p><strong>分区方案（9 个 row，24 个数据面板）：</strong></p>
+<ol>
+<li>JVM 概览 — 3 个 stat 单值快照（堆内存使用量、活跃线程数、死锁数）</li>
+<li>内存使用 — 堆趋势 / 非堆趋势 / 内存池 / 分配速率（4 个 timeseries）</li>
+<li>直接内存/缓冲池 — 缓冲池 Used vs Capacity（1 个 timeseries）</li>
+<li>垃圾回收 — 频率 / 停顿（2 个 timeseries）</li>
+<li>线程 — 数量 / 状态分布 / 创建速率（3 个 timeseries）</li>
+<li>类加载 — 当前已加载 / 累计加载 / 累计卸载（3 个 timeseries）</li>
+<li>虚拟机运行时 — CPU / 运行时长 / FD / 堆使用率（4 个 timeseries）</li>
+<li>资源占比（Gauge） — 堆/FD/CPU 三个比率仪表（3 个 gauge）</li>
+<li>线程状态分布（Bar gauge） — 各状态横向条形（1 个 bargauge）</li>
+</ol>
+<h3 id="52-panel-类型选择">5.2 Panel 类型选择</h3>
+<table>
+<thead>
+<tr>
+<th>类型</th>
+<th>适用场景</th>
+<th>本仪表板用法</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>stat</strong></td>
+<td>单值快照，一眼知总体状态</td>
+<td>概览区：堆内存使用量、活跃线程数、死锁数</td>
+</tr>
+<tr>
+<td><strong>timeseries</strong></td>
+<td>随时间变化的趋势，看异常时段</td>
+<td>内存/GC/线程/类加载/运行时的所有趋势面板</td>
+</tr>
+<tr>
+<td><strong>gauge</strong></td>
+<td>比率/百分比，直观判断是否越线</td>
+<td>CPU/FD/堆使用率（弧形 + 阈值着色）</td>
+</tr>
+<tr>
+<td><strong>bargauge</strong></td>
+<td>多类别占比对比</td>
+<td>线程状态分布（各状态横向条形）</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p>选型原则：状态量用 stat、趋势用 timeseries、比率用 gauge、分布用 bargauge。<strong>不为炫技堆面板</strong>，类型要与信息目的匹配。</p>
+</blockquote>
+<h3 id="53-布局24-列网格">5.3 布局（24 列网格）</h3>
+<ul>
+<li>全部面板基于 24 列网格（<code>gridPos</code>：x/y/w/h）。</li>
+<li>概览区 stat：3 个并排，各占 <strong>8 宽</strong>，占满首行。</li>
+<li>趋势 timeseries：<strong>12 宽</strong>（两个并排）或 <strong>24 宽</strong>（整行大图），高度 8。</li>
+<li>比率 gauge：3 个并排各 8 宽，与概览区呼应。</li>
+<li>bargauge：24 宽整行，展开各状态对比。</li>
+<li>row 用 <code>h=1</code> 作分隔条；面板靠 <code>y</code> 顺序自上而下排（扁平 panels 列表，row 不嵌套子面板）。</li>
+</ul>
+<h3 id="54-视觉规范科技审美">5.4 视觉规范（科技审美）</h3>
+<table>
+<thead>
+<tr>
+<th>维度</th>
+<th>设置</th>
+<th>理由</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>主题</td>
+<td><code>dark</code> 深色</td>
+<td>暗底高对比，长时间盯不累</td>
+</tr>
+<tr>
+<td>十字线</td>
+<td><code>graphTooltip=1</code> 共享</td>
+<td>多图同时间对齐，定位异常时段</td>
+</tr>
+<tr>
+<td>折线</td>
+<td><code>lineWidth=2</code> + <code>fillOpacity=10</code> + <code>gradientMode=opacity</code> + <code>smooth</code> + <code>showPoints=never</code></td>
+<td>淡填充 + 渐变，质感而非糊</td>
+</tr>
+<tr>
+<td>图例</td>
+<td>右侧、<code>calcs=[]</code>（无数值表）</td>
+<td>不遮挡图形主体</td>
+</tr>
+<tr>
+<td>Tooltip</td>
+<td><code>mode=multi</code> + <code>sort=desc</code></td>
+<td>多系列同时对比</td>
+</tr>
+<tr>
+<td>阈值线</td>
+<td>比率面板加 <code>thresholdsStyle=lines</code>，画 0.8 黄 / 0.9 红</td>
+<td>与 gauge 阈值呼应，一眼看越线</td>
+</tr>
+<tr>
+<td>上限线</td>
+<td>内存趋势把 <code>Max</code> 系列设红色虚线</td>
+<td>「Used 逼近上限」一目了然</td>
+</tr>
+<tr>
+<td>配色</td>
+<td>健康 <code>#00e676</code> / 告警 <code>#ffea00</code> / 危险 <code>#ff1744</code></td>
+<td>全局统一三段阈值色</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p>stat 单值面板配三段阈值 + 数值变色 + sparkline 迷你图，既有当前值又有近期走势。</p>
+</blockquote>
+<h2 id="六阈值--评价标准总表">六、阈值 / 评价标准总表</h2>
+<table>
+<thead>
+<tr>
+<th>维度</th>
+<th>指标</th>
+<th>健康(绿)</th>
+<th>告警(黄)</th>
+<th>危险(红)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>内存</td>
+<td>堆使用率 <code>vm_memory_heap_usage</code></td>
+<td>&lt;0.8</td>
+<td>0.8~0.9</td>
+<td>&gt;0.9</td>
+</tr>
+<tr>
+<td>CPU</td>
+<td><code>vm_cpu_load</code></td>
+<td>&lt;0.8</td>
+<td>0.8~0.9</td>
+<td>&gt;0.9</td>
+</tr>
+<tr>
+<td>文件描述符</td>
+<td><code>vm_file_descriptor_ratio</code></td>
+<td>&lt;0.8</td>
+<td>0.8~0.9</td>
+<td>&gt;0.9</td>
+</tr>
+<tr>
+<td>死锁</td>
+<td>deadlocked 计数</td>
+<td>0</td>
+<td>—</td>
+<td>&gt;0</td>
+</tr>
+<tr>
+<td>线程状态</td>
+<td>BLOCKED 数</td>
+<td>低</td>
+<td>偏高</td>
+<td>持续高</td>
+</tr>
+<tr>
+<td>GC</td>
+<td>频率/停顿</td>
+<td>平稳</td>
+<td>突升</td>
+<td>持续高位</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p>比率类阈值用 0~1（<code>percentunit</code>）；若 expr 显式 <code>*100</code>，则阈值改 80/90 并用 <code>unit=percent</code>。</p>
+</blockquote>
+<h2 id="七导入与维护">七、导入与维护</h2>
+<ul>
+<li><strong>导入方式</strong>：Grafana HTTP API <code>POST /api/dashboards/db</code>（带 <code>-d @file.json</code>）或 UI <code>+ → Import</code> 上传 JSON。JSON 外层须为 <code>{&quot;dashboard&quot;:{...}}</code>。</li>
+<li><strong>覆盖更新</strong>：同 uid 覆盖会触发乐观锁，需先 <code>GET</code> 取当前 <code>version</code> 对齐 payload，或加 <code>?overwrite=true</code> 并先删旧版。</li>
+<li><strong>模板变量</strong>：<code>$instance</code> 一处定义全局生效，新增 Jenkins target 无需改仪表板，下拉自动更新。</li>
+<li><strong>扩展</strong>：要加新指标，遵循「先定维度→选类型→配评价标准→定布局」四步，保持分区与配色统一。</li>
+<li><strong>仪表板源文件</strong>：已上传 GitHub <code>leoyim/jenkins-monitoring-dashboard</code>（<code>jenkins_jvm_monitor_v10.2.0.json</code>），可直接 import。</li>
+</ul>
+<h2 id="八监控效果">八、监控效果</h2>
+<p></p>
+<p></p>
+<p></p>]]></description>
+</item></channel>
+</rss>

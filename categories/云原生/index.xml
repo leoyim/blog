@@ -4,7 +4,1023 @@
         <link>http://leoyim.cn/categories/%E4%BA%91%E5%8E%9F%E7%94%9F/</link>
         <description>云原生 - 分类 - LeoYim&#39;s Blog</description>
         <generator>Hugo -- gohugo.io</generator><language>zh-CN</language><managingEditor>leo.yanwb@outlook.com (leoyim)</managingEditor>
-            <webMaster>leo.yanwb@outlook.com (leoyim)</webMaster><copyright>This work is licensed under a Creative Commons Attribution-NonCommercial 4.0 International License.</copyright><lastBuildDate>Fri, 06 Sep 2024 22:10:40 &#43;0800</lastBuildDate><atom:link href="http://leoyim.cn/categories/%E4%BA%91%E5%8E%9F%E7%94%9F/" rel="self" type="application/rss+xml" /><item>
+            <webMaster>leo.yanwb@outlook.com (leoyim)</webMaster><copyright>This work is licensed under a Creative Commons Attribution-NonCommercial 4.0 International License.</copyright><lastBuildDate>Fri, 07 Aug 2026 19:00:00 &#43;0800</lastBuildDate><atom:link href="http://leoyim.cn/categories/%E4%BA%91%E5%8E%9F%E7%94%9F/" rel="self" type="application/rss+xml" /><item>
+    <title>Tekton 本地部署与实践笔记</title>
+    <link>http://leoyim.cn/tekton-local-deploy-practice/</link>
+    <pubDate>Fri, 07 Aug 2026 19:00:00 &#43;0800</pubDate>
+    <author>作者</author>
+    <guid>http://leoyim.cn/tekton-local-deploy-practice/</guid>
+    <description><![CDATA[<blockquote>
+<p>环境：Windows + Docker Desktop 内置 Kubernetes（kind 内核）
+目标：在本地 K8s 上部署 Tekton，验证端到端工具链，并跑通一条能体现 Tekton 价值的示例流水线。
+完成状态：全部验证通过 ✅</p>
+</blockquote>
+<h2 id="0-背景与目标">0. 背景与目标</h2>
+<p>本次实践要解决的是「在本地 Kubernetes 环境中把 Tekton 跑起来并验证可用」。具体验收项：</p>
+<ol>
+<li>安装 Tekton Pipelines 核心组件到现有集群</li>
+<li>确认所有 Tekton Pod 处于 Running</li>
+<li>验证 Tekton CLI（tkn）可连接集群并执行命令</li>
+<li>确认可通过 kubectl 访问 Tekton 的 CRD（Task / Pipeline 等）</li>
+<li>运行一个简单的 Tekton Task 验证工具链</li>
+<li>（扩展）安装 Tekton Dashboard 图形界面</li>
+<li>（扩展）创建一条示例流水线 <code>demo-pipeline</code> 体现 Tekton 价值</li>
+</ol>
+<!--more-->
+<h2 id="1-环境判定第一个关键认知">1. 环境判定（第一个关键认知）</h2>
+<p>用户提到「已通过 kind 部署启动了 Kubernetes 集群」，但实际检测到的唯一 Kubernetes 上下文是 <strong><code>docker-desktop</code></strong>（节点名为 <code>desktop-control-plane</code>），并没有独立创建的 kind 集群，也没有 <code>kind</code> CLI。</p>
+<p>关键证据：集群里跑着 <code>kindnet</code> 这个 CNI Pod，说明 <strong>Docker Desktop 内置的 Kubernetes 就是用 kind 内核构建的</strong>。</p>
+<p>结论：Tekton 的部署命令、验证步骤与真正的 kind 集群完全一致，无需另外安装 <code>kind</code> CLI 或新建集群。直接在这个 <code>docker-desktop</code> 集群上完成全部工作即可。</p>
+<h2 id="2-部署-tekton-pipelines-v160">2. 部署 Tekton Pipelines v1.6.0</h2>
+<p>通过官方发布清单一键部署：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash">kubectl apply -f https://storage.googleapis.com/tekton-releases/pipeline/latest/release.yaml
+</code></pre></td></tr></table>
+</div>
+</div><ul>
+<li>部署到命名空间 <code>tekton-pipelines</code> 与 <code>tekton-pipelines-resolvers</code></li>
+<li>核心镜像来自 <code>ghcr.io/tektoncd/pipeline/*</code>（在本机网络下可正常拉取）</li>
+<li>包含 8 个 CRD，以及 <code>tekton-pipelines-controller</code>、<code>tekton-pipelines-webhook</code>、<code>tekton-pipelines-resolvers</code> 等核心组件</li>
+</ul>
+<p></p>
+<blockquote>
+<p>图 1：本地 Tekton 部署架构总览（组件与命名空间示意；Dashboard 实际端口为 <code>9097</code>）。</p>
+</blockquote>
+<h2 id="3-安装-tekton-clitknv0450">3. 安装 Tekton CLI（tkn）v0.45.0</h2>
+<p>从 GitHub Releases 下载 Windows 版压缩包，解压 <code>tkn.exe</code> 到 <code>C:\Users\leoya\bin</code>（该目录已在 PATH 中）。</p>
+<p>踩到的网络坑：GitHub API（<code>api.github.com</code>）被限流返回 403，无法直接拿到最新版本号。改用「探测候选版本号 + 直接 GET 下载」的方式，慢网下用 <code>curl -C -</code> 断点续传，最终成功拉取并校验 <code>v0.45.0</code>。</p>
+<p>验证：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash">tkn version
+<span class="c1"># Client version: 0.45.0</span>
+<span class="c1"># Pipeline version: v1.6.0</span>
+</code></pre></td></tr></table>
+</div>
+</div><h2 id="4-五项验收验证全部通过-">4. 五项验收验证（全部通过 ✅）</h2>
+<table>
+<thead>
+<tr>
+<th>验收项</th>
+<th>结果</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Tekton Pod 状态</td>
+<td>✅</td>
+<td>4/4 Running &amp; Ready（controller / webhook / events-controller / remote-resolvers）</td>
+</tr>
+<tr>
+<td>tkn 连接集群</td>
+<td>✅</td>
+<td><code>tkn version</code> 显示 Client 0.45.0 / Pipeline v1.6.0，可正常查询</td>
+</tr>
+<tr>
+<td>CRD 可访问</td>
+<td>✅</td>
+<td>8 个 <code>tekton.dev</code> CRD（tasks / taskruns / pipelines / pipelineruns / customruns / stepactions / verificationpolicies / resolutionrequests）均注册可读</td>
+</tr>
+<tr>
+<td>示例 Task</td>
+<td>✅</td>
+<td><code>hello-task</code> 的 TaskRun <strong>Succeeded</strong>，输出正确</td>
+</tr>
+<tr>
+<td>Dashboard（扩展）</td>
+<td>✅</td>
+<td>v0.71.0 已装，http://localhost:9097 可访问</td>
+</tr>
+</tbody>
+</table>
+<h2 id="5-踩坑与修复cgrdev-镜像拉取失败">5. 踩坑与修复：cgr.dev 镜像拉取失败</h2>
+<p>这是本次最值得记录的一个问题。</p>
+<p><strong>现象</strong>：首次运行 Task 时，Pod 卡在 <code>ContainerCreating</code> / <code>ImagePullBackOff</code>，报错 <code>unexpected EOF</code>。定位到是 Tekton 注入的 <code>place-scripts</code> 初始化容器在拉取 <code>cgr.dev/chainguard/busybox</code> 时，本机网络对该 registry 不稳定导致传输中断。</p>
+<p><strong>根因</strong>：控制器 Deployment 的 <code>-shell-image</code> 参数（args 索引 9）默认硬编码为 <code>cgr.dev/chainguard/busybox</code>，这个镜像被所有 Task 的 <code>place-scripts</code> 初始化容器依赖，也就是说<strong>哪怕你用 <code>command</code>/<code>args</code> 写 Task，也绕不开它</strong>。</p>
+<p><strong>修复</strong>：把 <code>-shell-image</code> 改为网络更稳定的 <code>docker.io/library/busybox:1.36.1</code>，再滚动重启控制器：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span><span class="lnt">5
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash">kubectl patch deployment tekton-pipelines-controller -n tekton-pipelines <span class="se">\
+</span><span class="se"></span>  --type<span class="o">=</span>json <span class="se">\
+</span><span class="se"></span>  -p<span class="o">=</span><span class="s1">&#39;[{&#34;op&#34;:&#34;replace&#34;,&#34;path&#34;:&#34;/spec/template/spec/containers/0/args/9&#34;,&#34;value&#34;:&#34;docker.io/library/busybox:1.36.1&#34;}]&#39;</span>
+
+kubectl rollout restart deployment/tekton-pipelines-controller -n tekton-pipelines
+</code></pre></td></tr></table>
+</div>
+</div><p>重启后 Task 立即恢复正常。</p>
+<p><strong>教训</strong>：遇到 <code>place-scripts</code> 拉取 busybox 失败，不要去改 Task 写法，要从控制器 <code>-shell-image</code> 入手。</p>
+<h2 id="6-安装-tekton-dashboard图形界面">6. 安装 Tekton Dashboard（图形界面）</h2>
+<p>Tekton 默认没有图形界面，需要单独安装 Dashboard。</p>
+<p>注意：官方文档里的 <code>storage.googleapis.com/tekton-releases/dashboard/latest/...</code> 路径目前已返回 404，需改用 GitHub Release 资产：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash">kubectl apply -f https://github.com/tektoncd/dashboard/releases/download/v0.71.0/release.yaml
+</code></pre></td></tr></table>
+</div>
+</div><ul>
+<li>部署到 <code>tekton-pipelines</code>，Service 名为 <code>tekton-dashboard</code>，端口 <code>9097</code></li>
+<li>镜像来自 <code>ghcr.io/tektoncd/dashboard/*</code>，无 cgr.dev 依赖，可正常拉取</li>
+<li>启动端口转发（后台运行）：</li>
+</ul>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash">kubectl port-forward -n tekton-pipelines svc/tekton-dashboard 9097:9097
+</code></pre></td></tr></table>
+</div>
+</div><p>浏览器访问 <strong>http://localhost:9097</strong> 即可看到 Pipeline / Task / TaskRun 等资源的图形界面。若转发随终端会话断开，重跑上面那条命令即可恢复。</p>
+<h2 id="7-示例流水线-demo-pipeline体现价值">7. 示例流水线 demo-pipeline（体现价值）</h2>
+<p>为了真正体现 Tekton 的价值，而不是只跑一个 <code>echo</code>，我创建了一条由三个 Task 组成的流水线：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback">git-clone  →  analyze-repo  →  report-summary
+ (Catalog)      (自定义)          (自定义)
+</code></pre></td></tr></table>
+</div>
+</div><ul>
+<li><strong>clone</strong>：直接复用 Tekton Catalog 官方 <code>git-clone</code> Task，把仓库克隆进 Workspace</li>
+<li><strong>analyze</strong>：自定义 Task，统计仓库文件数并找出最大文件，把结果写入 <code>results</code></li>
+<li><strong>report</strong>：自定义 Task，消费上游 <code>results</code> 打印汇总报告</li>
+</ul>
+<p></p>
+<blockquote>
+<p>图 2：demo-pipeline 流程图，演示 Task 复用、Workspace 共享、runAfter 编排与 Results 传递。</p>
+</blockquote>
+<p>这条流水线集中体现了 Tekton 的六大价值点：</p>
+<ol>
+<li><strong>可复用 Task</strong>：官方 <code>git-clone</code> 直接从 Catalog 引入，不重复造轮子</li>
+<li><strong>Workspace</strong>：用 <code>volumeClaimTemplate</code> 自动创建/回收 1Gi PVC，跨三个 Task 共享同一份代码</li>
+<li><strong>Pipeline DAG</strong>：用 <code>runAfter</code> 显式声明依赖（克隆完成才开始分析）</li>
+<li><strong>Parameters</strong>：仓库地址、业务消息参数化，一套流水线跑任意仓库</li>
+<li><strong>Results 传递</strong>：<code>analyze</code> 算出的「文件数 / 最大文件」通过 <code>$(tasks.analyze.results.*)</code> 解耦传给 <code>report</code></li>
+<li><strong>K8s 原生 CRD</strong>：全部是 Pipeline/Task/TaskRun/PipelineRun 资源，没有 Jenkins 那样的中心化 CI Master</li>
+</ol>
+<p>两个 PipelineRun 均 <code>Succeeded</code>，报告正确输出：<code>仓库 https://github.com/octocat/Hello-World.git</code> · <code>文件总数 24</code> · <code>最大文件 ./.git/hooks/pre-rebase.sample</code> · 状态成功 ✅。</p>
+<p><strong>这一节又踩了两个小坑</strong>：</p>
+<ul>
+<li>多文档 YAML 必须用 <code>---</code> 分隔，否则 <code>kubectl apply</code> 只会解析最后一个文档（最初漏写 <code>---</code>，导致两个自定义 Task 没被创建，只建了 Pipeline）</li>
+<li>Alpine/busybox 的 <code>find</code> 不支持 <code>-printf</code>，统计最大文件改用 <code>find -exec stat -c '%s %n' {} + | sort -rn</code></li>
+</ul>
+<h2 id="8-命令速查">8. 命令速查</h2>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="c1"># 部署核心组件</span>
+kubectl apply -f https://storage.googleapis.com/tekton-releases/pipeline/latest/release.yaml
+
+<span class="c1"># 查看 Tekton Pod</span>
+kubectl get pods -n tekton-pipelines -o wide
+
+<span class="c1"># tkn 查询</span>
+tkn task list
+tkn pipelinerun list
+tkn pipelinerun logs &lt;name&gt;
+
+<span class="c1"># 修复 cgr.dev 镜像问题</span>
+kubectl patch deployment tekton-pipelines-controller -n tekton-pipelines --type<span class="o">=</span>json <span class="se">\
+</span><span class="se"></span>  -p<span class="o">=</span><span class="s1">&#39;[{&#34;op&#34;:&#34;replace&#34;,&#34;path&#34;:&#34;/spec/template/spec/containers/0/args/9&#34;,&#34;value&#34;:&#34;docker.io/library/busybox:1.36.1&#34;}]&#39;</span>
+kubectl rollout restart deployment/tekton-pipelines-controller -n tekton-pipelines
+
+<span class="c1"># Dashboard 端口转发</span>
+kubectl port-forward -n tekton-pipelines svc/tekton-dashboard 9097:9097
+</code></pre></td></tr></table>
+</div>
+</div><h2 id="9-后续可扩展方向">9. 后续可扩展方向</h2>
+<ul>
+<li><strong>并行执行</strong>：在一条 Pipeline 里同时跑 lint / test / build（体现 Tekton 的并行 DAG 能力）</li>
+<li><strong>条件分支</strong>：用 <code>when</code> 表达式，仅在 <code>main</code> 分支执行部署 Task</li>
+<li><strong>构建镜像</strong>：接入 Kaniko Task，把代码构建成镜像并推送到镜像仓库</li>
+<li><strong>事件触发</strong>：安装 Tekton Triggers，用 Git Webhook 自动触发流水线</li>
+</ul>
+<h2 id="10-本地恢复与运维2026-08-20-补充">10. 本地恢复与运维（2026-08-20 补充）</h2>
+<blockquote>
+<p>本章记录重启 Docker Desktop 后的排障、一键恢复脚本、WSL2 迁移，以及 Dashboard 只读问题修复。</p>
+</blockquote>
+<h3 id="101-重启-docker-desktop-后-tekton消失的真相">10.1 重启 Docker Desktop 后 Tekton「消失」的真相</h3>
+<p><strong>现象</strong>：重启 Docker Desktop 后，用 <code>docker ps -a</code> 看不到任何「tekton」实例，以为 Tekton 丢了。</p>
+<p><strong>真相</strong>：Tekton 从来不是 Docker 容器，它是跑在 Docker Desktop 内置 Kubernetes（<code>docker-desktop</code> 集群）里的 K8s 工作负载（Deployment / Pod / CRD）。<code>docker ps -a</code> 只列 Docker Engine 直接管理的容器，Tekton 组件不会以「tekton」名字出现，所以「看不到」是<strong>查看工具用错了</strong>，不是真的消失。</p>
+<p>实测诊断（WSL2 / Git Bash 直连本机集群）：</p>
+<table>
+<thead>
+<tr>
+<th>检查项</th>
+<th>结果</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>集群 <code>docker-desktop</code></td>
+<td>Ready（节点 <code>desktop-control-plane</code>）</td>
+</tr>
+<tr>
+<td><code>tekton-pipelines</code> 命名空间</td>
+<td>Active</td>
+</tr>
+<tr>
+<td>4 个 Pod（controller/webhook/events/dashboard）</td>
+<td>全 <code>1/1 Running</code>（随 Docker 重启一起重启过）</td>
+</tr>
+<tr>
+<td><code>-shell-image</code> 补丁</td>
+<td>仍持久化为 <code>docker.io/library/busybox:1.36.1</code></td>
+</tr>
+<tr>
+<td>tkn / Pipeline / Dashboard</td>
+<td>0.45.0 / v1.6.0 / v0.71.0</td>
+</tr>
+<tr>
+<td>8 个 tekton.dev CRD</td>
+<td>齐全</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p>结论：本地 docker-desktop K8s 正常重启后会自动恢复状态（Pod 重启但会回来）。如果哪天真「全没了」（命名空间都没了），那是集群被 <strong>Reset / 自动更新重建 VM / K8s 开关被关再开</strong>，属于硬重置，需要重新部署。</p>
+</blockquote>
+<p><strong>正确的查看命令</strong>（别再用 <code>docker ps -a</code>）：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash">kubectl get pods -n tekton-pipelines -o wide
+kubectl get ns
+kubectl config current-context      <span class="c1"># 应为 docker-desktop</span>
+kubectl get nodes
+</code></pre></td></tr></table>
+</div>
+</div><h3 id="102-一键恢复脚本--wsl2-迁移">10.2 一键恢复脚本 + WSL2 迁移</h3>
+<p>裸 <code>kubectl apply</code> 远程 URL 的方案，一旦集群被硬重置就一切归零。因此把恢复流程固化为脚本，并迁入 WSL2 Ubuntu（跑 kubectl 比走 <code>/mnt/d</code> 更快）：</p>
+<p>脚本位置（WSL2）：<code>/home/leoyim/tekton/</code></p>
+<ul>
+<li><code>tekton-install.sh</code>：幂等恢复，切 <code>docker-desktop</code> 上下文 → 下载并 apply Pipeline + Dashboard 清单（缓存到 <code>manifests/</code>）→ 自动 patch <code>-shell-image</code> → rollout restart → 等待就绪</li>
+<li><code>tekton-forward.sh</code>：Dashboard 端口转发到 <code>localhost:9097</code></li>
+<li><code>demo-pipeline.yaml</code>：按第 7 节重建的示例流水线</li>
+</ul>
+<p>Windows 源副本仍在 <code>D:\Project\NoteBook\05Tekton\</code>（备份 + 与笔记同目录）。</p>
+<p>WSL2 内 kubectl 位于 <code>/usr/local/bin/kubectl</code>，上下文即 <code>docker-desktop</code>，脚本可直接运行。</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="c1"># WSL2 终端</span>
+<span class="nb">cd</span> ~/tekton
+bash tekton-install.sh     <span class="c1"># 集群被硬重置时一键还原（平时可跳过，纯验证用）</span>
+bash tekton-forward.sh     <span class="c1"># 另开终端：转发 Dashboard，浏览器开 http://localhost:9097</span>
+</code></pre></td></tr></table>
+</div>
+</div><blockquote>
+<p>注意：Dashboard 默认是<strong>只读部署</strong>（见 10.3），<code>tekton-install.sh</code> 目前只还原「能看」，如需界面可写，恢复后再跑 10.3 的两步。</p>
+</blockquote>
+<h3 id="103-dashboard-只读模式与修复ui-可写">10.3 Dashboard 只读模式与修复（UI 可写）</h3>
+<p><strong>现象</strong>：Dashboard 界面顶部提示 Read Only，不能从网页创建/编辑/删除资源。</p>
+<p><strong>根因</strong>：Tekton Dashboard 官方 release 默认就是只读部署，由「标志位 + RBAC」双重控制：</p>
+<ul>
+<li>部署参数含 <code>--read-only=true</code>（args 索引 8）</li>
+<li><code>tekton-dashboard</code> ServiceAccount 只绑定 <code>*-view</code>（只读）ClusterRole，无任何 edit 绑定</li>
+</ul>
+<blockquote>
+<p>只读<strong>只影响网页 UI 写操作</strong>；终端 <code>kubectl</code>/<code>tkn</code>（docker-desktop kubeconfig 是集群管理员）始终是全读写，用 <code>kubectl apply</code> 跑 <code>demo-pipeline.yaml</code> 不受影响。</p>
+</blockquote>
+<p><strong>改为可写（两步缺一不可）</strong>：</p>
+<p>① 给 <code>tekton-dashboard</code> SA 加 edit 权限：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span><span class="lnt">21
+</span><span class="lnt">22
+</span><span class="lnt">23
+</span><span class="lnt">24
+</span><span class="lnt">25
+</span><span class="lnt">26
+</span><span class="lnt">27
+</span><span class="lnt">28
+</span><span class="lnt">29
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash">kubectl apply -f - <span class="s">&lt;&lt;&#39;EOF&#39;
+</span><span class="s">apiVersion: rbac.authorization.k8s.io/v1
+</span><span class="s">kind: ClusterRole
+</span><span class="s">metadata:
+</span><span class="s">  name: tekton-dashboard-edit
+</span><span class="s">rules:
+</span><span class="s">  - apiGroups: [&#34;tekton.dev&#34;]
+</span><span class="s">    resources: [&#34;*&#34;]
+</span><span class="s">    verbs: [&#34;get&#34;,&#34;list&#34;,&#34;watch&#34;,&#34;create&#34;,&#34;update&#34;,&#34;patch&#34;,&#34;delete&#34;]
+</span><span class="s">  - apiGroups: [&#34;&#34;]
+</span><span class="s">    resources: [&#34;pods&#34;,&#34;pods/log&#34;,&#34;configmaps&#34;,&#34;secrets&#34;,&#34;persistentvolumeclaims&#34;,&#34;services&#34;]
+</span><span class="s">    verbs: [&#34;get&#34;,&#34;list&#34;,&#34;watch&#34;,&#34;create&#34;,&#34;update&#34;,&#34;patch&#34;,&#34;delete&#34;]
+</span><span class="s">  - apiGroups: [&#34;batch&#34;]
+</span><span class="s">    resources: [&#34;jobs&#34;]
+</span><span class="s">    verbs: [&#34;*&#34;]
+</span><span class="s">---
+</span><span class="s">apiVersion: rbac.authorization.k8s.io/v1
+</span><span class="s">kind: ClusterRoleBinding
+</span><span class="s">metadata:
+</span><span class="s">  name: tekton-dashboard-edit-binding
+</span><span class="s">roleRef:
+</span><span class="s">  apiGroup: rbac.authorization.k8s.io
+</span><span class="s">  kind: ClusterRole
+</span><span class="s">  name: tekton-dashboard-edit
+</span><span class="s">subjects:
+</span><span class="s">  - kind: ServiceAccount
+</span><span class="s">    name: tekton-dashboard
+</span><span class="s">    namespace: tekton-pipelines
+</span><span class="s">EOF</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>② 把 <code>--read-only=true</code> 改为 <code>false</code> 并重启：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash">kubectl patch deployment tekton-dashboard -n tekton-pipelines --type<span class="o">=</span>json <span class="se">\
+</span><span class="se"></span>  -p<span class="o">=</span><span class="s1">&#39;[{&#34;op&#34;:&#34;replace&#34;,&#34;path&#34;:&#34;/spec/template/spec/containers/0/args/8&#34;,&#34;value&#34;:&#34;--read-only=false&#34;}]&#39;</span>
+kubectl rollout restart deployment/tekton-dashboard -n tekton-pipelines
+</code></pre></td></tr></table>
+</div>
+</div><p>刷新 http://localhost:9097，Read Only 提示消失即生效。该改动存于 etcd，Pod 重启不丢；但<strong>集群被硬重置后会回来</strong>，届时需要重跑这两步（或把它并进 <code>tekton-install.sh</code>）。</p>
+<h3 id="104-demo-pipelineyaml-重建">10.4 demo-pipeline.yaml 重建</h3>
+<p>原笔记第 7 节只有流程描述、没存完整清单。已按第 7 节重建 <code>demo-pipeline.yaml</code>（<code>git-clone → analyze-repo → report-summary</code>），放 <code>~/tekton/</code> 与 <code>D:\Project\NoteBook\05Tekton\</code>。</p>
+<p>首次跑前需先装官方 <code>git-clone</code> Catalog Task：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash">kubectl apply -f https://raw.githubusercontent.com/tektoncd/catalog/main/task/git-clone/0.9/git-clone.yaml
+kubectl apply -f demo-pipeline.yaml
+</code></pre></td></tr></table>
+</div>
+</div><h2 id="附录关键经验教训清单">附录：关键经验教训清单</h2>
+<ul>
+<li>Docker Desktop 内置 K8s = kind 内核，Tekton 部署方式与真 kind 一致</li>
+<li><code>cgr.dev/chainguard/busybox</code> 在本机网络不稳定 → 改 <code>docker.io/library/busybox:1.36.1</code></li>
+<li><code>place-scripts</code> 注入无法用 <code>command</code>/<code>args</code> 绕过，必须从 <code>-shell-image</code> 解决</li>
+<li>Dashboard 的 <code>latest</code> 下载路径已 404，改用 GitHub Release 资产</li>
+<li>多文档 YAML 必须加 <code>---</code></li>
+<li>busybox <code>find</code> 不支持 <code>-printf</code>，用 <code>stat</code> 替代</li>
+<li><strong>Tekton 是 K8s 工作负载，不归 <code>docker ps</code> 管</strong>，用 <code>docker ps -a</code> 永远看不到「tekton」，正确查看用 <code>kubectl get pods -n tekton-pipelines</code></li>
+<li>重启 Docker Desktop 后 Tekton 通常自动恢复；真「全没了」= 集群硬重置（Reset / 自动更新重建 VM / K8s 重开），用 <code>tekton-install.sh</code> 一键还原</li>
+<li>恢复/运维脚本已迁入 WSL2 <code>/home/leoyim/tekton/</code>（<code>tekton-install.sh</code> / <code>tekton-forward.sh</code> / <code>demo-pipeline.yaml</code>），Windows 源副本在 <code>D:\Project\NoteBook\05Tekton\</code></li>
+<li>Dashboard 官方默认<strong>只读</strong>（<code>--read-only=true</code> 且 SA 仅绑 <code>*-view</code>），UI 想可写需加 edit ClusterRole/Binding + 把 flag 改 false（见 10.3）</li>
+<li>只读只限网页 UI；终端 <code>kubectl</code>/<code>tkn</code>（docker-desktop kubeconfig=集群管理员）始终是全读写</li>
+</ul>]]></description>
+</item><item>
+    <title>Jenkins JVM 监控仪表板设计与实践</title>
+    <link>http://leoyim.cn/jenkins-jvm-monitoring-dashboard/</link>
+    <pubDate>Mon, 03 Aug 2026 15:10:00 &#43;0800</pubDate>
+    <author>作者</author>
+    <guid>http://leoyim.cn/jenkins-jvm-monitoring-dashboard/</guid>
+    <description><![CDATA[<blockquote>
+<p>目标：为 Jenkins（CI/CD 控制器）建立一套可观测的 JVM 运行时监控，覆盖内存、GC、线程、类加载、运行时资源五大维度，既能一眼看总体健康，又能下钻定位异常。
+本笔记记录「怎么从零设计这套监控」，而非某次操作流水账，可直接照此搭建或迁移到其他 JVM 服务。</p>
+</blockquote>
+<h2 id="一整体链路">一、整体链路</h2>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span><span class="lnt">5
+</span><span class="lnt">6
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback">Jenkins (插件暴露 /prometheus)
+       │ jvm_* + vm_* 指标
+       ▼
+Prometheus  (按 metrics_path 抓取，多实例靠 label 区分)
+       ▼
+Grafana  (数据源 = Prometheus；模板变量 $instance 切换实例)
+</code></pre></td></tr></table>
+</div>
+</div><ul>
+<li><strong>指标来源</strong>：Jenkins 安装 Prometheus metrics 插件后，在 <code>/prometheus</code> 端点暴露 <code>jvm_*</code>（JVM JMX 指标，内存/GC/线程/类加载）与 <code>vm_*</code>（Dropwizard VM 指标，CPU/FD/uptime/heap 比率）两族指标。两者都带 <code>instance</code> 标签，可合并使用。</li>
+<li><strong>数据源</strong>：Grafana 里建一个名为 <code>Prometheus</code> 的数据源（按名称引用，不要按 uid，避免迁移时 uid 失配）。Docker 部署 Grafana 时 URL 用 <code>host.docker.internal:9090</code>，宿主机直连用 <code>localhost:9090</code>。</li>
+<li><strong>多实例切换</strong>：仪表板顶部放模板变量 <code>$instance = label_values(jvm_info, instance)</code>，开启 <code>multi + includeAll</code>、<code>allValue=&quot;.*&quot;</code>，所有面板查询带 <code>instance=&quot;$instance&quot;</code> 过滤。新增 Jenkins target 后下拉自动列出。</li>
+</ul>
+<!--more-->
+<h2 id="二如何提炼指标">二、如何提炼指标</h2>
+<p>抓取端点一个服务就能吐出上百个指标名，实测本端点暴露 <strong>52 个 <code>jvm_*</code> + 349 个 <code>vm_*</code> = 401 个指标名</strong>，不能全堆上去。需要提炼。</p>
+<p><strong>为什么 401 个里只选 24 个？</strong></p>
+<ul>
+<li><code>vm_*</code> 大量是<strong>预聚合窗口变体</strong>（<code>_history</code> / <code>_window_5m</code> / <code>_window_15m</code> / <code>_window_1h</code> / <code>_x100</code>），与 Grafana 自己用 <code>rate()</code> 算的速率重复，选基础量即可。</li>
+<li><code>vm_memory_pools_*</code> 是<strong>按池拆分</strong>的变体（G1 Eden/Old/Survivor/Metaspace/CodeHeap…），已被 <code>jvm_memory_pool_bytes_*</code> 覆盖。</li>
+<li><code>jvm_*</code> 存在<strong>重复命名</strong>（如 <code>jvm_threads_current</code> 与 <code>jvm_threads_live_threads</code>、<code>jvm_memory_bytes_used</code> 与 <code>jvm_memory_used_bytes</code>），选其一。</li>
+<li>去重后<strong>精选 24 个核心指标</strong>，覆盖五大维度，每个都配评价标准。</li>
+</ul>
+<p><strong>提炼四步法：</strong></p>
+<ol>
+<li><strong>定维度</strong>，按 JVM 子系统划「要看什么」：内存 / GC / 线程 / 类加载 / 运行时资源。</li>
+<li><strong>选类型</strong>，看当前状态用 gauge；看趋势用 <code>rate(counter)[5m]</code>；看健康度优先比率（0~1）而非裸字节。</li>
+<li><strong>去重聚合</strong>，同类信号选代表（线程状态用一个 bargauge 汇总，不为每状态画一条线）；相关绝对量合并到一张图加系列名（堆 Used/Committed/Max 三条线对比上限）。</li>
+<li><strong>配评价标准</strong>，能量化的给阈值（比率类 0.8/0.9 三段）；不能量化的给定性判据（死锁 &gt;0 即严重；BLOCKED 高 = 锁竞争）。</li>
+</ol>
+<blockquote>
+<p>时间窗口统一用 <code>[5m]</code>，不要裸用 <code>$__rate_interval</code>（部分版本下 Prometheus 会 400）。</p>
+</blockquote>
+<h2 id="三指标清单--解释--评价标准24-个">三、指标清单 · 解释 · 评价标准（24 个）</h2>
+<blockquote>
+<p>下列为仪表板实际监控的 24 个核心指标，按维度分组。<code>$instance</code> 为模板变量，实际查询均带 <code>instance=&quot;$instance&quot;</code> 过滤。</p>
+</blockquote>
+<h3 id="31-内存9-个">3.1 内存（9 个）</h3>
+<table>
+<thead>
+<tr>
+<th>指标</th>
+<th>类型</th>
+<th>含义</th>
+<th>PromQL</th>
+<th>评价标准</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>jvm_memory_bytes_used</code></td>
+<td>gauge</td>
+<td>已用内存（heap/nonheap）</td>
+<td><code>jvm_memory_bytes_used{area=&quot;heap&quot;}</code></td>
+<td>配合 max 看使用率，逼近上限即告警</td>
+</tr>
+<tr>
+<td><code>jvm_memory_bytes_committed</code></td>
+<td>gauge</td>
+<td>JVM 已向 OS 申请的内存</td>
+<td><code>jvm_memory_bytes_committed{area=&quot;heap&quot;}</code></td>
+<td>committed 持续上涨 → 堆在扩张</td>
+</tr>
+<tr>
+<td><code>jvm_memory_bytes_max</code></td>
+<td>gauge</td>
+<td>内存上限</td>
+<td><code>jvm_memory_bytes_max{area=&quot;heap&quot;}</code></td>
+<td>警戒线；Used→Max 距离越小越危险</td>
+</tr>
+<tr>
+<td><code>jvm_memory_pool_bytes_used</code></td>
+<td>gauge</td>
+<td>各内存池已用（Eden/Old/Metaspace…）</td>
+<td><code>jvm_memory_pool_bytes_used</code></td>
+<td>Old 池逼近上限 → GC 压力前兆</td>
+</tr>
+<tr>
+<td><code>jvm_memory_pool_bytes_max</code></td>
+<td>gauge</td>
+<td>各内存池上限</td>
+<td><code>jvm_memory_pool_bytes_max</code></td>
+<td>与 used 对比看各池余量</td>
+</tr>
+<tr>
+<td><code>jvm_memory_pool_allocated_bytes_total</code></td>
+<td>counter</td>
+<td>累计分配字节数</td>
+<td><code>rate(jvm_memory_pool_allocated_bytes_total[5m])</code></td>
+<td>分配速率突增 → 可能触发频繁 GC</td>
+</tr>
+<tr>
+<td><code>jvm_buffer_pool_used_bytes</code></td>
+<td>gauge</td>
+<td>直接内存缓冲池已用</td>
+<td><code>jvm_buffer_pool_used_bytes</code></td>
+<td>对比 capacity，看堆外内存</td>
+</tr>
+<tr>
+<td><code>jvm_buffer_pool_capacity_bytes</code></td>
+<td>gauge</td>
+<td>缓冲池容量</td>
+<td><code>jvm_buffer_pool_capacity_bytes</code></td>
+<td>作为缓冲池上限警戒</td>
+</tr>
+<tr>
+<td><code>vm_memory_heap_usage</code></td>
+<td>gauge</td>
+<td>堆使用率（0~1）</td>
+<td><code>vm_memory_heap_usage</code></td>
+<td><strong>&lt;0.8 健康 / 0.8~0.9 告警 / &gt;0.9 危险</strong></td>
+</tr>
+</tbody>
+</table>
+<h3 id="32-垃圾回收-gc2-个">3.2 垃圾回收 GC（2 个）</h3>
+<table>
+<thead>
+<tr>
+<th>指标</th>
+<th>类型</th>
+<th>含义</th>
+<th>PromQL</th>
+<th>评价标准</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>jvm_gc_collection_seconds_count</code></td>
+<td>counter</td>
+<td>GC 累计次数</td>
+<td><code>rate(jvm_gc_collection_seconds_count[5m])</code></td>
+<td>频率突升 = 频繁 GC，分配压力大</td>
+</tr>
+<tr>
+<td><code>jvm_gc_collection_seconds_sum</code></td>
+<td>counter</td>
+<td>GC 累计停顿时长</td>
+<td><code>rate(jvm_gc_collection_seconds_sum[5m])</code></td>
+<td>停顿占比高 → 影响响应/吞吐</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p>按 <code>gc</code> 标签区分收集器（如 G1 Young/Old），可分别看或汇总。</p>
+</blockquote>
+<h3 id="33-线程7-个">3.3 线程（7 个）</h3>
+<table>
+<thead>
+<tr>
+<th>指标</th>
+<th>类型</th>
+<th>含义</th>
+<th>PromQL</th>
+<th>评价标准</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>jvm_threads_current</code></td>
+<td>gauge</td>
+<td>活跃线程数</td>
+<td><code>jvm_threads_current</code></td>
+<td>与基线对比，突增/突降即异常</td>
+</tr>
+<tr>
+<td><code>jvm_threads_daemon</code></td>
+<td>gauge</td>
+<td>守护线程数</td>
+<td><code>jvm_threads_daemon</code></td>
+<td>一般稳定，参考用</td>
+</tr>
+<tr>
+<td><code>jvm_threads_peak</code></td>
+<td>gauge</td>
+<td>峰值线程数</td>
+<td><code>jvm_threads_peak</code></td>
+<td>参考最大并发承载</td>
+</tr>
+<tr>
+<td><code>jvm_threads_state</code></td>
+<td>gauge</td>
+<td>各状态线程数</td>
+<td><code>jvm_threads_state{state=&quot;BLOCKED&quot;}</code></td>
+<td><strong>BLOCKED 高 = 锁竞争</strong>；WAITING 异常高 = 资源等待</td>
+</tr>
+<tr>
+<td><code>jvm_threads_deadlocked</code></td>
+<td>gauge</td>
+<td>死锁线程数（循环依赖）</td>
+<td><code>sum(jvm_threads_deadlocked or vector(0))</code></td>
+<td><strong>&gt;0 即严重</strong></td>
+</tr>
+<tr>
+<td><code>jvm_threads_deadlocked_monitor</code></td>
+<td>gauge</td>
+<td>死锁线程数（监视器）</td>
+<td><code>sum(jvm_threads_deadlocked_monitor or vector(0))</code></td>
+<td><strong>&gt;0 即严重</strong></td>
+</tr>
+<tr>
+<td><code>jvm_threads_started_total</code></td>
+<td>counter</td>
+<td>累计启动线程数</td>
+<td><code>rate(jvm_threads_started_total[5m])</code></td>
+<td>创建速率持续高 = 线程池未复用/泄漏</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p>死锁面板把两个死锁指标合并：<code>(sum(jvm_threads_deadlocked or vector(0)) + sum(jvm_threads_deadlocked_monitor or vector(0)))</code>。
+注意：活跃线程数用 <code>jvm_threads_current</code>，不要用 <code>jvm_threads_live_threads</code>（重复命名，后者无数据）。</p>
+</blockquote>
+<h3 id="34-类加载3-个">3.4 类加载（3 个）</h3>
+<table>
+<thead>
+<tr>
+<th>指标</th>
+<th>类型</th>
+<th>含义</th>
+<th>PromQL</th>
+<th>评价标准</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>jvm_classes_currently_loaded</code></td>
+<td>gauge</td>
+<td>当前已加载类数</td>
+<td><code>jvm_classes_currently_loaded</code></td>
+<td>持续上涨 → 可能类/类加载器泄漏</td>
+</tr>
+<tr>
+<td><code>jvm_classes_loaded_total</code></td>
+<td>counter</td>
+<td>累计加载类总数</td>
+<td><code>jvm_classes_loaded_total</code></td>
+<td>配合卸载数看加载 churn</td>
+</tr>
+<tr>
+<td><code>jvm_classes_unloaded_total</code></td>
+<td>counter</td>
+<td>累计卸载类总数</td>
+<td><code>jvm_classes_unloaded_total</code></td>
+<td>卸载频繁 → 动态类/热部署，关注 Metaspace</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p>注意区分：<code>jvm_classes_currently_loaded</code>（gauge，当前值）与 <code>jvm_classes_loaded_total</code>（counter，累计值）是两个不同指标，别混用。</p>
+</blockquote>
+<h3 id="35-运行时资源3-个--jvm_info">3.5 运行时资源（3 个 + jvm_info）</h3>
+<table>
+<thead>
+<tr>
+<th>指标</th>
+<th>类型</th>
+<th>含义</th>
+<th>PromQL</th>
+<th>评价标准</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>vm_cpu_load</code></td>
+<td>gauge</td>
+<td>JVM 进程 CPU 负载（0~1）</td>
+<td><code>vm_cpu_load</code></td>
+<td><strong>&lt;0.8 / 0.8~0.9 / &gt;0.9</strong></td>
+</tr>
+<tr>
+<td><code>vm_file_descriptor_ratio</code></td>
+<td>gauge</td>
+<td>文件描述符使用率（0~1）</td>
+<td><code>vm_file_descriptor_ratio</code></td>
+<td>接近 1 → 可能打不开文件/连接</td>
+</tr>
+<tr>
+<td><code>vm_uptime_milliseconds</code></td>
+<td>gauge</td>
+<td>进程运行时长</td>
+<td><code>vm_uptime_milliseconds</code></td>
+<td>参考稳定性；异常低 = 重启过</td>
+</tr>
+<tr>
+<td><code>jvm_info</code></td>
+<td>info</td>
+<td>JVM 版本信息（常量 1）</td>
+<td><code>jvm_info</code></td>
+<td>不做图，仅用于 <code>label_values(jvm_info, instance)</code> 取实例列表</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p><code>vm_memory_heap_usage</code> 既出现在内存区（timeseries 趋势）也出现在资源占比区（gauge 仪表），是同一指标两种展示。</p>
+</blockquote>
+<h3 id="36-端点全量指标说明未监控的为何不选">3.6 端点全量指标说明（未监控的为何不选）</h3>
+<p>端点共 401 个指标名，除上述 24 个外，其余主要分四类，均<strong>刻意不选</strong>：</p>
+<ul>
+<li><strong>预聚合窗口变体</strong>：<code>vm_*_history</code> / <code>vm_*_window_5m</code> / <code>_15m</code> / <code>_1h</code> / <code>_x100</code>，与 Grafana <code>rate()</code> 重复。</li>
+<li><strong>按池拆分变体</strong>：<code>vm_memory_pools_&lt;池名&gt;_*</code>（G1 Eden/Old/Survivor/Metaspace/CodeHeap…），已被 <code>jvm_memory_pool_bytes_*</code> 覆盖。</li>
+<li><strong>重复命名</strong>：<code>jvm_threads_live_threads</code> / <code>jvm_memory_used_bytes</code> / <code>jvm_classes_loaded_classes</code> 等，与所选指标同义，选其一避免冗余。</li>
+<li><strong>GC pause 细分</strong>：<code>jvm_gc_pause_seconds_*</code> / <code>jvm_gc_live_data_size_bytes</code> / <code>jvm_gc_max_data_size_bytes</code> / <code>jvm_gc_overhead_percent</code>，进阶 GC 分析用，本版未纳入，需要时可加。</li>
+</ul>
+<h2 id="四如何配置-prometheus-采集">四、如何配置 Prometheus 采集</h2>
+<h3 id="41-jenkins-侧">4.1 Jenkins 侧</h3>
+<ol>
+<li>安装 <strong>Prometheus metrics plugin</strong>（<code>org.jenkins-ci.plugins:prometheus</code>）。</li>
+<li>插件默认在 <code>http://&lt;jenkins&gt;/prometheus</code> 暴露指标（含 <code>jvm_*</code> 与 <code>vm_*</code>）。</li>
+<li>（可选）在插件配置页调整暴露的指标范围；如需鉴权，配置允许的路径/认证。</li>
+</ol>
+<h3 id="42-prometheus-侧prometheusyml">4.2 Prometheus 侧（prometheus.yml）</h3>
+<p>单实例：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span><span class="lnt">5
+</span><span class="lnt">6
+</span><span class="lnt">7
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-yaml" data-lang="yaml"><span class="nt">scrape_configs</span><span class="p">:</span><span class="w">
+</span><span class="w">  </span>- <span class="nt">job_name</span><span class="p">:</span><span class="w"> </span><span class="l">jenkins</span><span class="w">
+</span><span class="w">    </span><span class="nt">metrics_path</span><span class="p">:</span><span class="w"> </span><span class="l">/prometheus</span><span class="w">
+</span><span class="w">    </span><span class="nt">static_configs</span><span class="p">:</span><span class="w">
+</span><span class="w">      </span>- <span class="nt">targets</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s1">&#39;jenkins-1:8080&#39;</span><span class="p">]</span><span class="w">
+</span><span class="w">        </span><span class="nt">labels</span><span class="p">:</span><span class="w">
+</span><span class="w">          </span><span class="nt">instance</span><span class="p">:</span><span class="w"> </span><span class="l">jks1</span><span class="w">
+</span></code></pre></td></tr></table>
+</div>
+</div><p>多实例（同一 <code>metrics_path</code>，靠 <code>instance</code> label 区分）：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-yaml" data-lang="yaml"><span class="nt">scrape_configs</span><span class="p">:</span><span class="w">
+</span><span class="w">  </span>- <span class="nt">job_name</span><span class="p">:</span><span class="w"> </span><span class="l">jenkins</span><span class="w">
+</span><span class="w">    </span><span class="nt">metrics_path</span><span class="p">:</span><span class="w"> </span><span class="l">/prometheus</span><span class="w">
+</span><span class="w">    </span><span class="nt">static_configs</span><span class="p">:</span><span class="w">
+</span><span class="w">      </span>- <span class="nt">targets</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s1">&#39;jenkins-1:8080&#39;</span><span class="p">]</span><span class="w">
+</span><span class="w">        </span><span class="nt">labels</span><span class="p">:</span><span class="w">
+</span><span class="w">          </span><span class="nt">instance</span><span class="p">:</span><span class="w"> </span><span class="l">jks1</span><span class="w">
+</span><span class="w">      </span>- <span class="nt">targets</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s1">&#39;jenkins-2:8080&#39;</span><span class="p">]</span><span class="w">
+</span><span class="w">        </span><span class="nt">labels</span><span class="p">:</span><span class="w">
+</span><span class="w">          </span><span class="nt">instance</span><span class="p">:</span><span class="w"> </span><span class="l">jks2</span><span class="w">
+</span></code></pre></td></tr></table>
+</div>
+</div><blockquote>
+<p>也可用 <code>relabel_configs</code> 把 <code>__address__</code> 重写为业务名做 <code>instance</code>。</p>
+</blockquote>
+<h3 id="43-验证采集">4.3 验证采集</h3>
+<ul>
+<li>Prometheus <code>/targets</code> → 对应 job <code>health=up</code></li>
+<li><code>curl http://prometheus:9090/api/v1/query?query=up{job=&quot;jenkins&quot;}</code> → 值为 1</li>
+<li><code>curl http://jenkins:8080/prometheus | grep '^jvm_'</code> → 看暴露了哪些指标名</li>
+<li>Grafana 数据源代理：<code>/api/datasources/proxy/&lt;id&gt;/api/v1/query?query=...</code> 直接查某指标</li>
+</ul>
+<h2 id="五如何设计仪表板">五、如何设计仪表板</h2>
+<h3 id="51-分区设计原则">5.1 分区设计原则</h3>
+<ul>
+<li><strong>按子系统分 row</strong>，从上到下：概览 → 内存 → GC → 线程 → 类加载 → 运行时 → 比率仪表 → 分布。</li>
+<li><strong>信息密度递减</strong>：顶部是最重要的「总览快照」，下面是趋势细节与分布。</li>
+<li>每个分区用 <code>row</code> 收纳，折叠/展开可控；分区标题用「中文(英文)」双语便于检索。</li>
+</ul>
+<p><strong>分区方案（9 个 row，24 个数据面板）：</strong></p>
+<ol>
+<li>JVM 概览 — 3 个 stat 单值快照（堆内存使用量、活跃线程数、死锁数）</li>
+<li>内存使用 — 堆趋势 / 非堆趋势 / 内存池 / 分配速率（4 个 timeseries）</li>
+<li>直接内存/缓冲池 — 缓冲池 Used vs Capacity（1 个 timeseries）</li>
+<li>垃圾回收 — 频率 / 停顿（2 个 timeseries）</li>
+<li>线程 — 数量 / 状态分布 / 创建速率（3 个 timeseries）</li>
+<li>类加载 — 当前已加载 / 累计加载 / 累计卸载（3 个 timeseries）</li>
+<li>虚拟机运行时 — CPU / 运行时长 / FD / 堆使用率（4 个 timeseries）</li>
+<li>资源占比（Gauge） — 堆/FD/CPU 三个比率仪表（3 个 gauge）</li>
+<li>线程状态分布（Bar gauge） — 各状态横向条形（1 个 bargauge）</li>
+</ol>
+<h3 id="52-panel-类型选择">5.2 Panel 类型选择</h3>
+<table>
+<thead>
+<tr>
+<th>类型</th>
+<th>适用场景</th>
+<th>本仪表板用法</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>stat</strong></td>
+<td>单值快照，一眼知总体状态</td>
+<td>概览区：堆内存使用量、活跃线程数、死锁数</td>
+</tr>
+<tr>
+<td><strong>timeseries</strong></td>
+<td>随时间变化的趋势，看异常时段</td>
+<td>内存/GC/线程/类加载/运行时的所有趋势面板</td>
+</tr>
+<tr>
+<td><strong>gauge</strong></td>
+<td>比率/百分比，直观判断是否越线</td>
+<td>CPU/FD/堆使用率（弧形 + 阈值着色）</td>
+</tr>
+<tr>
+<td><strong>bargauge</strong></td>
+<td>多类别占比对比</td>
+<td>线程状态分布（各状态横向条形）</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p>选型原则：状态量用 stat、趋势用 timeseries、比率用 gauge、分布用 bargauge。<strong>不为炫技堆面板</strong>，类型要与信息目的匹配。</p>
+</blockquote>
+<h3 id="53-布局24-列网格">5.3 布局（24 列网格）</h3>
+<ul>
+<li>全部面板基于 24 列网格（<code>gridPos</code>：x/y/w/h）。</li>
+<li>概览区 stat：3 个并排，各占 <strong>8 宽</strong>，占满首行。</li>
+<li>趋势 timeseries：<strong>12 宽</strong>（两个并排）或 <strong>24 宽</strong>（整行大图），高度 8。</li>
+<li>比率 gauge：3 个并排各 8 宽，与概览区呼应。</li>
+<li>bargauge：24 宽整行，展开各状态对比。</li>
+<li>row 用 <code>h=1</code> 作分隔条；面板靠 <code>y</code> 顺序自上而下排（扁平 panels 列表，row 不嵌套子面板）。</li>
+</ul>
+<h3 id="54-视觉规范科技审美">5.4 视觉规范（科技审美）</h3>
+<table>
+<thead>
+<tr>
+<th>维度</th>
+<th>设置</th>
+<th>理由</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>主题</td>
+<td><code>dark</code> 深色</td>
+<td>暗底高对比，长时间盯不累</td>
+</tr>
+<tr>
+<td>十字线</td>
+<td><code>graphTooltip=1</code> 共享</td>
+<td>多图同时间对齐，定位异常时段</td>
+</tr>
+<tr>
+<td>折线</td>
+<td><code>lineWidth=2</code> + <code>fillOpacity=10</code> + <code>gradientMode=opacity</code> + <code>smooth</code> + <code>showPoints=never</code></td>
+<td>淡填充 + 渐变，质感而非糊</td>
+</tr>
+<tr>
+<td>图例</td>
+<td>右侧、<code>calcs=[]</code>（无数值表）</td>
+<td>不遮挡图形主体</td>
+</tr>
+<tr>
+<td>Tooltip</td>
+<td><code>mode=multi</code> + <code>sort=desc</code></td>
+<td>多系列同时对比</td>
+</tr>
+<tr>
+<td>阈值线</td>
+<td>比率面板加 <code>thresholdsStyle=lines</code>，画 0.8 黄 / 0.9 红</td>
+<td>与 gauge 阈值呼应，一眼看越线</td>
+</tr>
+<tr>
+<td>上限线</td>
+<td>内存趋势把 <code>Max</code> 系列设红色虚线</td>
+<td>「Used 逼近上限」一目了然</td>
+</tr>
+<tr>
+<td>配色</td>
+<td>健康 <code>#00e676</code> / 告警 <code>#ffea00</code> / 危险 <code>#ff1744</code></td>
+<td>全局统一三段阈值色</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p>stat 单值面板配三段阈值 + 数值变色 + sparkline 迷你图，既有当前值又有近期走势。</p>
+</blockquote>
+<h2 id="六阈值--评价标准总表">六、阈值 / 评价标准总表</h2>
+<table>
+<thead>
+<tr>
+<th>维度</th>
+<th>指标</th>
+<th>健康(绿)</th>
+<th>告警(黄)</th>
+<th>危险(红)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>内存</td>
+<td>堆使用率 <code>vm_memory_heap_usage</code></td>
+<td>&lt;0.8</td>
+<td>0.8~0.9</td>
+<td>&gt;0.9</td>
+</tr>
+<tr>
+<td>CPU</td>
+<td><code>vm_cpu_load</code></td>
+<td>&lt;0.8</td>
+<td>0.8~0.9</td>
+<td>&gt;0.9</td>
+</tr>
+<tr>
+<td>文件描述符</td>
+<td><code>vm_file_descriptor_ratio</code></td>
+<td>&lt;0.8</td>
+<td>0.8~0.9</td>
+<td>&gt;0.9</td>
+</tr>
+<tr>
+<td>死锁</td>
+<td>deadlocked 计数</td>
+<td>0</td>
+<td>—</td>
+<td>&gt;0</td>
+</tr>
+<tr>
+<td>线程状态</td>
+<td>BLOCKED 数</td>
+<td>低</td>
+<td>偏高</td>
+<td>持续高</td>
+</tr>
+<tr>
+<td>GC</td>
+<td>频率/停顿</td>
+<td>平稳</td>
+<td>突升</td>
+<td>持续高位</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p>比率类阈值用 0~1（<code>percentunit</code>）；若 expr 显式 <code>*100</code>，则阈值改 80/90 并用 <code>unit=percent</code>。</p>
+</blockquote>
+<h2 id="七导入与维护">七、导入与维护</h2>
+<ul>
+<li><strong>导入方式</strong>：Grafana HTTP API <code>POST /api/dashboards/db</code>（带 <code>-d @file.json</code>）或 UI <code>+ → Import</code> 上传 JSON。JSON 外层须为 <code>{&quot;dashboard&quot;:{...}}</code>。</li>
+<li><strong>覆盖更新</strong>：同 uid 覆盖会触发乐观锁，需先 <code>GET</code> 取当前 <code>version</code> 对齐 payload，或加 <code>?overwrite=true</code> 并先删旧版。</li>
+<li><strong>模板变量</strong>：<code>$instance</code> 一处定义全局生效，新增 Jenkins target 无需改仪表板，下拉自动更新。</li>
+<li><strong>扩展</strong>：要加新指标，遵循「先定维度→选类型→配评价标准→定布局」四步，保持分区与配色统一。</li>
+<li><strong>仪表板源文件</strong>：已上传 GitHub <code>leoyim/jenkins-monitoring-dashboard</code>（<code>jenkins_jvm_monitor_v10.2.0.json</code>），可直接 import。</li>
+</ul>
+<h2 id="八监控效果">八、监控效果</h2>
+<p></p>
+<p></p>
+<p></p>]]></description>
+</item><item>
     <title>Docker备忘清单</title>
     <link>http://leoyim.cn/docker-cheat-sheet/</link>
     <pubDate>Fri, 06 Sep 2024 22:10:40 &#43;0800</pubDate>

@@ -1,0 +1,640 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="robots" content="noodp" />
+        <meta http-equiv="X-UA-Compatible" content="IE=edge, chrome=1">
+        <title>Tekton 本地部署与实践笔记 - LeoYim&#39;s Blog</title><meta name="Description" content="在 Docker Desktop 内置 Kubernetes（kind 内核）上部署 Tekton Pipelines v1.6.0 与 Dashboard，跑通 git-clone → analyze → report 示例流水线；含 cgr.dev 镜像坑、一键恢复脚本与 Dashboard 只读修复。"><meta property="og:title" content="Tekton 本地部署与实践笔记" />
+<meta property="og:description" content="在 Docker Desktop 内置 Kubernetes（kind 内核）上部署 Tekton Pipelines v1.6.0 与 Dashboard，跑通 git-clone → analyze → report 示例流水线；含 cgr.dev 镜像坑、一键恢复脚本与 Dashboard 只读修复。" />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="http://leoyim.cn/tekton-local-deploy-practice/" /><meta property="og:image" content="http://leoyim.cn/tekton-local-deploy-practice/01-framework-tekton-arch.png"/><meta property="article:section" content="posts" />
+<meta property="article:published_time" content="2026-08-07T19:00:00+08:00" />
+<meta property="article:modified_time" content="2026-08-20T13:36:00+08:00" />
+
+<meta name="twitter:card" content="summary_large_image"/>
+<meta name="twitter:image" content="http://leoyim.cn/tekton-local-deploy-practice/01-framework-tekton-arch.png"/>
+<meta name="twitter:title" content="Tekton 本地部署与实践笔记"/>
+<meta name="twitter:description" content="在 Docker Desktop 内置 Kubernetes（kind 内核）上部署 Tekton Pipelines v1.6.0 与 Dashboard，跑通 git-clone → analyze → report 示例流水线；含 cgr.dev 镜像坑、一键恢复脚本与 Dashboard 只读修复。"/>
+<meta name="application-name" content="LeoYim">
+<meta name="apple-mobile-web-app-title" content="LeoYim"><meta name="theme-color" content="#ffffff"><meta name="msapplication-TileColor" content="#da532c"><link rel="icon" href="logo.png"><link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png"><link rel="mask-icon" href="/safari-pinned-tab.svg" color="#5bbad5"><link rel="manifest" href="/site.webmanifest"><link rel="canonical" href="http://leoyim.cn/tekton-local-deploy-practice/" /><link rel="prev" href="http://leoyim.cn/jenkins-jvm-monitoring-dashboard/" /><link rel="next" href="http://leoyim.cn/publish-html-as-blog-post/" /><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/normalize.css@8.0.1/normalize.min.css"><link rel="stylesheet" href="/css/style.min.162a6d410bf0acd35ebdbfa383c6b220.css" integrity="md5-FiptQQvwrNNevb&#43;jg8ayIA=="><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@5.13.0/css/all.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/animate.css@3.7.2/animate.min.css"><script type="application/ld+json">
+    {
+        "@context": "http://schema.org",
+        "@type": "BlogPosting",
+        "headline": "Tekton 本地部署与实践笔记",
+        "inLanguage": "zh-CN",
+        "mainEntityOfPage": {
+            "@type": "WebPage",
+            "@id": "http:\/\/leoyim.cn\/tekton-local-deploy-practice\/"
+        },"image": [{
+                            "@type": "ImageObject",
+                            "url": "http:\/\/leoyim.cn\/tekton-local-deploy-practice\/01-framework-tekton-arch.png",
+                            "width":  1216 ,
+                            "height":  832 
+                        }],"genre": "posts","keywords": "tekton, kubernetes, cicd, devops, 实践笔记","wordcount":  4395 ,
+        "url": "http:\/\/leoyim.cn\/tekton-local-deploy-practice\/","datePublished": "2026-08-07T19:00:00+08:00","dateModified": "2026-08-20T13:36:00+08:00","license": "This work is licensed under a Creative Commons Attribution-NonCommercial 4.0 International License.","publisher": {
+            "@type": "Organization",
+            "name": "leoyim","logo": "http:\/\/tvax1.sinaimg.cn\/large\/006aCS7gly1gupodmjm55j60cs0cswen02.jpg"},"author": {
+                "@type": "Person",
+                "name": "LeoYim"
+            },"description": "在 Docker Desktop 内置 Kubernetes（kind 内核）上部署 Tekton Pipelines v1.6.0 与 Dashboard，跑通 git-clone → analyze → report 示例流水线；含 cgr.dev 镜像坑、一键恢复脚本与 Dashboard 只读修复。"
+    }
+    </script></head>
+    <body header-desktop="fixed" header-mobile="auto"><script type="text/javascript">(window.localStorage && localStorage.getItem('theme') ? localStorage.getItem('theme') === 'dark' : ('auto' === 'auto' ? window.matchMedia('(prefers-color-scheme: dark)').matches : 'auto' === 'dark')) && document.body.setAttribute('theme', 'dark');</script>
+
+        <div id="mask"></div><div class="wrapper"><header class="desktop" id="header-desktop">
+    <div class="header-wrapper">
+        <div class="header-title">
+            <a href="/" title="LeoYim&#39;s Blog"><span class="header-title-pre"><i class='fab fa-pied-piper-alt'></i></span>JingShui</a>
+        </div>
+        <div class="menu">
+            <div class="menu-inner"><a class="menu-item" href="/posts/"> 所有文章 </a><a class="menu-item" href="/tags/"> 标签 </a><a class="menu-item" href="/categories/"> 分类 </a><a class="menu-item" href="/about/"> 关于 </a><a class="menu-item" href="/memos.html"> 记录 </a><a class="menu-item" href="https://github.com/leoyim" title="GitHub" rel="noopener noreffer" target="_blank"><i class='fab fa-github fa-fw'></i>  </a><span class="menu-item delimiter"></span><span class="menu-item search" id="search-desktop">
+                        <input type="text" placeholder="搜索文章标题或内容..." id="search-input-desktop">
+                        <a href="javascript:void(0);" class="search-button search-toggle" id="search-toggle-desktop" title="搜索">
+                            <i class="fas fa-search fa-fw"></i>
+                        </a>
+                        <a href="javascript:void(0);" class="search-button search-clear" id="search-clear-desktop" title="清空">
+                            <i class="fas fa-times-circle fa-fw"></i>
+                        </a>
+                        <span class="search-button search-loading" id="search-loading-desktop">
+                            <i class="fas fa-spinner fa-fw fa-spin"></i>
+                        </span>
+                    </span><a href="javascript:void(0);" class="menu-item theme-switch" title="切换主题">
+                    <i class="fas fa-adjust fa-fw"></i>
+                </a>
+            </div>
+        </div>
+    </div>
+</header><header class="mobile" id="header-mobile">
+    <div class="header-container">
+        <div class="header-wrapper">
+            <div class="header-title">
+                <a href="/" title="LeoYim&#39;s Blog"><span class="header-title-pre"><i class='fab fa-pied-piper-alt'></i></span>JingShui</a>
+            </div>
+            <div class="menu-toggle" id="menu-toggle-mobile">
+                <span></span><span></span><span></span>
+            </div>
+        </div>
+        <div class="menu" id="menu-mobile"><div class="search-wrapper">
+                    <div class="search mobile" id="search-mobile">
+                        <input type="text" placeholder="搜索文章标题或内容..." id="search-input-mobile">
+                        <a href="javascript:void(0);" class="search-button search-toggle" id="search-toggle-mobile" title="搜索">
+                            <i class="fas fa-search fa-fw"></i>
+                        </a>
+                        <a href="javascript:void(0);" class="search-button search-clear" id="search-clear-mobile" title="清空">
+                            <i class="fas fa-times-circle fa-fw"></i>
+                        </a>
+                        <span class="search-button search-loading" id="search-loading-mobile">
+                            <i class="fas fa-spinner fa-fw fa-spin"></i>
+                        </span>
+                    </div>
+                    <a href="javascript:void(0);" class="search-cancel" id="search-cancel-mobile">
+                        取消
+                    </a>
+                </div><a class="menu-item" href="/posts/" title="">所有文章</a><a class="menu-item" href="/tags/" title="">标签</a><a class="menu-item" href="/categories/" title="">分类</a><a class="menu-item" href="/about/" title="">关于</a><a class="menu-item" href="/memos.html" title="">记录</a><a class="menu-item" href="https://github.com/leoyim" title="GitHub" rel="noopener noreffer" target="_blank"><i class='fab fa-github fa-fw'></i></a><a href="javascript:void(0);" class="menu-item theme-switch" title="切换主题">
+                <i class="fas fa-adjust fa-fw"></i>
+            </a></div>
+    </div>
+    <script>(function(i,s,o,g,r,a,m){i["DaoVoiceObject"]=r;i[r]=i[r]||function(){(i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;a.charset="utf-8";m.parentNode.insertBefore(a,m)})(window,document,"script",('https:' == document.location.protocol ? 'https:' : 'http:') + "//widget.daovoice.io/widget/b3166d69.js","daovoice")</script>
+</header>
+<div class="search-dropdown desktop">
+    <div id="search-dropdown-desktop"></div>
+</div>
+<div class="search-dropdown mobile">
+    <div id="search-dropdown-mobile"></div>
+</div><main class="main">
+                <div class="container"><div class="toc" id="toc-auto">
+            <h2 class="toc-title">目录</h2>
+            <div class="toc-content" id="toc-content-auto"></div>
+        </div><article class="page single"><h1 class="single-title animated flipInX">Tekton 本地部署与实践笔记</h1><div class="post-meta">
+            <div class="post-meta-line"><span class="post-author"><a href="https://leoyim.cn" title="Author" target="_blank" rel="noopener noreffer author" class="author"><i class="fas fa-user-circle fa-fw"></i>LeoYim</a></span>&nbsp;<span class="post-category">收录于 <a href="/categories/%E4%BA%91%E5%8E%9F%E7%94%9F/"><i class="far fa-folder fa-fw"></i>云原生</a></span></div>
+            <div class="post-meta-line"><i class="far fa-calendar-alt fa-fw"></i>&nbsp;<time datetime="2026-08-07">2026-08-07</time>&nbsp;<i class="fas fa-pencil-alt fa-fw"></i>&nbsp;约 4395 字&nbsp;
+                <i class="far fa-clock fa-fw"></i>&nbsp;预计阅读 9 分钟&nbsp;</div>
+        </div><div class="featured-image"><img
+        class="lazyload"
+        src="/svg/loading.min.svg"
+        data-src="/tekton-local-deploy-practice/01-framework-tekton-arch.png"
+        data-srcset="/tekton-local-deploy-practice/01-framework-tekton-arch.png, /tekton-local-deploy-practice/01-framework-tekton-arch.png 1.5x, /tekton-local-deploy-practice/01-framework-tekton-arch.png 2x"
+        data-sizes="auto"
+        alt="/tekton-local-deploy-practice/01-framework-tekton-arch.png"
+        title="在 Docker Desktop 内置 Kubernetes（kind 内核）上部署 Tekton Pipelines v1.6.0 与 Dashboard，跑通 git-clone → analyze → report 示例流水线；含 cgr.dev 镜像坑、一键恢复脚本与 Dashboard 只读修复。" /></div><div class="details toc" id="toc-static"  kept="">
+                <div class="details-summary toc-title">
+                    <span>目录</span>
+                    <span><i class="details-icon fas fa-angle-right"></i></span>
+                </div>
+                <div class="details-content toc-content" id="toc-content-static"><nav id="TableOfContents">
+  <ul>
+    <li><a href="#0-背景与目标">0. 背景与目标</a></li>
+    <li><a href="#1-环境判定第一个关键认知">1. 环境判定（第一个关键认知）</a></li>
+    <li><a href="#2-部署-tekton-pipelines-v160">2. 部署 Tekton Pipelines v1.6.0</a></li>
+    <li><a href="#3-安装-tekton-clitknv0450">3. 安装 Tekton CLI（tkn）v0.45.0</a></li>
+    <li><a href="#4-五项验收验证全部通过-">4. 五项验收验证（全部通过 ✅）</a></li>
+    <li><a href="#5-踩坑与修复cgrdev-镜像拉取失败">5. 踩坑与修复：cgr.dev 镜像拉取失败</a></li>
+    <li><a href="#6-安装-tekton-dashboard图形界面">6. 安装 Tekton Dashboard（图形界面）</a></li>
+    <li><a href="#7-示例流水线-demo-pipeline体现价值">7. 示例流水线 demo-pipeline（体现价值）</a></li>
+    <li><a href="#8-命令速查">8. 命令速查</a></li>
+    <li><a href="#9-后续可扩展方向">9. 后续可扩展方向</a></li>
+    <li><a href="#10-本地恢复与运维2026-08-20-补充">10. 本地恢复与运维（2026-08-20 补充）</a>
+      <ul>
+        <li><a href="#101-重启-docker-desktop-后-tekton消失的真相">10.1 重启 Docker Desktop 后 Tekton「消失」的真相</a></li>
+        <li><a href="#102-一键恢复脚本--wsl2-迁移">10.2 一键恢复脚本 + WSL2 迁移</a></li>
+        <li><a href="#103-dashboard-只读模式与修复ui-可写">10.3 Dashboard 只读模式与修复（UI 可写）</a></li>
+        <li><a href="#104-demo-pipelineyaml-重建">10.4 demo-pipeline.yaml 重建</a></li>
+      </ul>
+    </li>
+    <li><a href="#附录关键经验教训清单">附录：关键经验教训清单</a></li>
+  </ul>
+</nav></div>
+            </div><div class="content" id="content"><blockquote>
+<p>环境：Windows + Docker Desktop 内置 Kubernetes（kind 内核）
+目标：在本地 K8s 上部署 Tekton，验证端到端工具链，并跑通一条能体现 Tekton 价值的示例流水线。
+完成状态：全部验证通过 ✅</p>
+</blockquote>
+<h2 id="0-背景与目标">0. 背景与目标</h2>
+<p>本次实践要解决的是「在本地 Kubernetes 环境中把 Tekton 跑起来并验证可用」。具体验收项：</p>
+<ol>
+<li>安装 Tekton Pipelines 核心组件到现有集群</li>
+<li>确认所有 Tekton Pod 处于 Running</li>
+<li>验证 Tekton CLI（tkn）可连接集群并执行命令</li>
+<li>确认可通过 kubectl 访问 Tekton 的 CRD（Task / Pipeline 等）</li>
+<li>运行一个简单的 Tekton Task 验证工具链</li>
+<li>（扩展）安装 Tekton Dashboard 图形界面</li>
+<li>（扩展）创建一条示例流水线 <code>demo-pipeline</code> 体现 Tekton 价值</li>
+</ol>
+<!--more-->
+<h2 id="1-环境判定第一个关键认知">1. 环境判定（第一个关键认知）</h2>
+<p>用户提到「已通过 kind 部署启动了 Kubernetes 集群」，但实际检测到的唯一 Kubernetes 上下文是 <strong><code>docker-desktop</code></strong>（节点名为 <code>desktop-control-plane</code>），并没有独立创建的 kind 集群，也没有 <code>kind</code> CLI。</p>
+<p>关键证据：集群里跑着 <code>kindnet</code> 这个 CNI Pod，说明 <strong>Docker Desktop 内置的 Kubernetes 就是用 kind 内核构建的</strong>。</p>
+<p>结论：Tekton 的部署命令、验证步骤与真正的 kind 集群完全一致，无需另外安装 <code>kind</code> CLI 或新建集群。直接在这个 <code>docker-desktop</code> 集群上完成全部工作即可。</p>
+<h2 id="2-部署-tekton-pipelines-v160">2. 部署 Tekton Pipelines v1.6.0</h2>
+<p>通过官方发布清单一键部署：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash">kubectl apply -f https://storage.googleapis.com/tekton-releases/pipeline/latest/release.yaml
+</code></pre></td></tr></table>
+</div>
+</div><ul>
+<li>部署到命名空间 <code>tekton-pipelines</code> 与 <code>tekton-pipelines-resolvers</code></li>
+<li>核心镜像来自 <code>ghcr.io/tektoncd/pipeline/*</code>（在本机网络下可正常拉取）</li>
+<li>包含 8 个 CRD，以及 <code>tekton-pipelines-controller</code>、<code>tekton-pipelines-webhook</code>、<code>tekton-pipelines-resolvers</code> 等核心组件</li>
+</ul>
+<p><img
+        class="lazyload"
+        src="/svg/loading.min.svg"
+        data-src="01-framework-tekton-arch.png"
+        data-srcset="01-framework-tekton-arch.png, 01-framework-tekton-arch.png 1.5x, 01-framework-tekton-arch.png 2x"
+        data-sizes="auto"
+        alt="01-framework-tekton-arch.png"
+        title="Tekton 本地部署架构总览" /></p>
+<blockquote>
+<p>图 1：本地 Tekton 部署架构总览（组件与命名空间示意；Dashboard 实际端口为 <code>9097</code>）。</p>
+</blockquote>
+<h2 id="3-安装-tekton-clitknv0450">3. 安装 Tekton CLI（tkn）v0.45.0</h2>
+<p>从 GitHub Releases 下载 Windows 版压缩包，解压 <code>tkn.exe</code> 到 <code>C:\Users\leoya\bin</code>（该目录已在 PATH 中）。</p>
+<p>踩到的网络坑：GitHub API（<code>api.github.com</code>）被限流返回 403，无法直接拿到最新版本号。改用「探测候选版本号 + 直接 GET 下载」的方式，慢网下用 <code>curl -C -</code> 断点续传，最终成功拉取并校验 <code>v0.45.0</code>。</p>
+<p>验证：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash">tkn version
+<span class="c1"># Client version: 0.45.0</span>
+<span class="c1"># Pipeline version: v1.6.0</span>
+</code></pre></td></tr></table>
+</div>
+</div><h2 id="4-五项验收验证全部通过-">4. 五项验收验证（全部通过 ✅）</h2>
+<table>
+<thead>
+<tr>
+<th>验收项</th>
+<th>结果</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Tekton Pod 状态</td>
+<td>✅</td>
+<td>4/4 Running &amp; Ready（controller / webhook / events-controller / remote-resolvers）</td>
+</tr>
+<tr>
+<td>tkn 连接集群</td>
+<td>✅</td>
+<td><code>tkn version</code> 显示 Client 0.45.0 / Pipeline v1.6.0，可正常查询</td>
+</tr>
+<tr>
+<td>CRD 可访问</td>
+<td>✅</td>
+<td>8 个 <code>tekton.dev</code> CRD（tasks / taskruns / pipelines / pipelineruns / customruns / stepactions / verificationpolicies / resolutionrequests）均注册可读</td>
+</tr>
+<tr>
+<td>示例 Task</td>
+<td>✅</td>
+<td><code>hello-task</code> 的 TaskRun <strong>Succeeded</strong>，输出正确</td>
+</tr>
+<tr>
+<td>Dashboard（扩展）</td>
+<td>✅</td>
+<td>v0.71.0 已装，http://localhost:9097 可访问</td>
+</tr>
+</tbody>
+</table>
+<h2 id="5-踩坑与修复cgrdev-镜像拉取失败">5. 踩坑与修复：cgr.dev 镜像拉取失败</h2>
+<p>这是本次最值得记录的一个问题。</p>
+<p><strong>现象</strong>：首次运行 Task 时，Pod 卡在 <code>ContainerCreating</code> / <code>ImagePullBackOff</code>，报错 <code>unexpected EOF</code>。定位到是 Tekton 注入的 <code>place-scripts</code> 初始化容器在拉取 <code>cgr.dev/chainguard/busybox</code> 时，本机网络对该 registry 不稳定导致传输中断。</p>
+<p><strong>根因</strong>：控制器 Deployment 的 <code>-shell-image</code> 参数（args 索引 9）默认硬编码为 <code>cgr.dev/chainguard/busybox</code>，这个镜像被所有 Task 的 <code>place-scripts</code> 初始化容器依赖，也就是说<strong>哪怕你用 <code>command</code>/<code>args</code> 写 Task，也绕不开它</strong>。</p>
+<p><strong>修复</strong>：把 <code>-shell-image</code> 改为网络更稳定的 <code>docker.io/library/busybox:1.36.1</code>，再滚动重启控制器：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span><span class="lnt">5
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash">kubectl patch deployment tekton-pipelines-controller -n tekton-pipelines <span class="se">\
+</span><span class="se"></span>  --type<span class="o">=</span>json <span class="se">\
+</span><span class="se"></span>  -p<span class="o">=</span><span class="s1">&#39;[{&#34;op&#34;:&#34;replace&#34;,&#34;path&#34;:&#34;/spec/template/spec/containers/0/args/9&#34;,&#34;value&#34;:&#34;docker.io/library/busybox:1.36.1&#34;}]&#39;</span>
+
+kubectl rollout restart deployment/tekton-pipelines-controller -n tekton-pipelines
+</code></pre></td></tr></table>
+</div>
+</div><p>重启后 Task 立即恢复正常。</p>
+<p><strong>教训</strong>：遇到 <code>place-scripts</code> 拉取 busybox 失败，不要去改 Task 写法，要从控制器 <code>-shell-image</code> 入手。</p>
+<h2 id="6-安装-tekton-dashboard图形界面">6. 安装 Tekton Dashboard（图形界面）</h2>
+<p>Tekton 默认没有图形界面，需要单独安装 Dashboard。</p>
+<p>注意：官方文档里的 <code>storage.googleapis.com/tekton-releases/dashboard/latest/...</code> 路径目前已返回 404，需改用 GitHub Release 资产：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash">kubectl apply -f https://github.com/tektoncd/dashboard/releases/download/v0.71.0/release.yaml
+</code></pre></td></tr></table>
+</div>
+</div><ul>
+<li>部署到 <code>tekton-pipelines</code>，Service 名为 <code>tekton-dashboard</code>，端口 <code>9097</code></li>
+<li>镜像来自 <code>ghcr.io/tektoncd/dashboard/*</code>，无 cgr.dev 依赖，可正常拉取</li>
+<li>启动端口转发（后台运行）：</li>
+</ul>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash">kubectl port-forward -n tekton-pipelines svc/tekton-dashboard 9097:9097
+</code></pre></td></tr></table>
+</div>
+</div><p>浏览器访问 <strong>http://localhost:9097</strong> 即可看到 Pipeline / Task / TaskRun 等资源的图形界面。若转发随终端会话断开，重跑上面那条命令即可恢复。</p>
+<h2 id="7-示例流水线-demo-pipeline体现价值">7. 示例流水线 demo-pipeline（体现价值）</h2>
+<p>为了真正体现 Tekton 的价值，而不是只跑一个 <code>echo</code>，我创建了一条由三个 Task 组成的流水线：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback">git-clone  →  analyze-repo  →  report-summary
+ (Catalog)      (自定义)          (自定义)
+</code></pre></td></tr></table>
+</div>
+</div><ul>
+<li><strong>clone</strong>：直接复用 Tekton Catalog 官方 <code>git-clone</code> Task，把仓库克隆进 Workspace</li>
+<li><strong>analyze</strong>：自定义 Task，统计仓库文件数并找出最大文件，把结果写入 <code>results</code></li>
+<li><strong>report</strong>：自定义 Task，消费上游 <code>results</code> 打印汇总报告</li>
+</ul>
+<p><img
+        class="lazyload"
+        src="/svg/loading.min.svg"
+        data-src="02-flowchart-demo-pipeline.png"
+        data-srcset="/tekton-local-deploy-practice/02-flowchart-demo-pipeline.png, 02-flowchart-demo-pipeline.png 1.5x, /tekton-local-deploy-practice/02-flowchart-demo-pipeline.png 2x"
+        data-sizes="auto"
+        alt="/tekton-local-deploy-practice/02-flowchart-demo-pipeline.png"
+        title="demo-pipeline 流程图" /></p>
+<blockquote>
+<p>图 2：demo-pipeline 流程图，演示 Task 复用、Workspace 共享、runAfter 编排与 Results 传递。</p>
+</blockquote>
+<p>这条流水线集中体现了 Tekton 的六大价值点：</p>
+<ol>
+<li><strong>可复用 Task</strong>：官方 <code>git-clone</code> 直接从 Catalog 引入，不重复造轮子</li>
+<li><strong>Workspace</strong>：用 <code>volumeClaimTemplate</code> 自动创建/回收 1Gi PVC，跨三个 Task 共享同一份代码</li>
+<li><strong>Pipeline DAG</strong>：用 <code>runAfter</code> 显式声明依赖（克隆完成才开始分析）</li>
+<li><strong>Parameters</strong>：仓库地址、业务消息参数化，一套流水线跑任意仓库</li>
+<li><strong>Results 传递</strong>：<code>analyze</code> 算出的「文件数 / 最大文件」通过 <code>$(tasks.analyze.results.*)</code> 解耦传给 <code>report</code></li>
+<li><strong>K8s 原生 CRD</strong>：全部是 Pipeline/Task/TaskRun/PipelineRun 资源，没有 Jenkins 那样的中心化 CI Master</li>
+</ol>
+<p>两个 PipelineRun 均 <code>Succeeded</code>，报告正确输出：<code>仓库 https://github.com/octocat/Hello-World.git</code> · <code>文件总数 24</code> · <code>最大文件 ./.git/hooks/pre-rebase.sample</code> · 状态成功 ✅。</p>
+<p><strong>这一节又踩了两个小坑</strong>：</p>
+<ul>
+<li>多文档 YAML 必须用 <code>---</code> 分隔，否则 <code>kubectl apply</code> 只会解析最后一个文档（最初漏写 <code>---</code>，导致两个自定义 Task 没被创建，只建了 Pipeline）</li>
+<li>Alpine/busybox 的 <code>find</code> 不支持 <code>-printf</code>，统计最大文件改用 <code>find -exec stat -c '%s %n' {} + | sort -rn</code></li>
+</ul>
+<h2 id="8-命令速查">8. 命令速查</h2>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="c1"># 部署核心组件</span>
+kubectl apply -f https://storage.googleapis.com/tekton-releases/pipeline/latest/release.yaml
+
+<span class="c1"># 查看 Tekton Pod</span>
+kubectl get pods -n tekton-pipelines -o wide
+
+<span class="c1"># tkn 查询</span>
+tkn task list
+tkn pipelinerun list
+tkn pipelinerun logs &lt;name&gt;
+
+<span class="c1"># 修复 cgr.dev 镜像问题</span>
+kubectl patch deployment tekton-pipelines-controller -n tekton-pipelines --type<span class="o">=</span>json <span class="se">\
+</span><span class="se"></span>  -p<span class="o">=</span><span class="s1">&#39;[{&#34;op&#34;:&#34;replace&#34;,&#34;path&#34;:&#34;/spec/template/spec/containers/0/args/9&#34;,&#34;value&#34;:&#34;docker.io/library/busybox:1.36.1&#34;}]&#39;</span>
+kubectl rollout restart deployment/tekton-pipelines-controller -n tekton-pipelines
+
+<span class="c1"># Dashboard 端口转发</span>
+kubectl port-forward -n tekton-pipelines svc/tekton-dashboard 9097:9097
+</code></pre></td></tr></table>
+</div>
+</div><h2 id="9-后续可扩展方向">9. 后续可扩展方向</h2>
+<ul>
+<li><strong>并行执行</strong>：在一条 Pipeline 里同时跑 lint / test / build（体现 Tekton 的并行 DAG 能力）</li>
+<li><strong>条件分支</strong>：用 <code>when</code> 表达式，仅在 <code>main</code> 分支执行部署 Task</li>
+<li><strong>构建镜像</strong>：接入 Kaniko Task，把代码构建成镜像并推送到镜像仓库</li>
+<li><strong>事件触发</strong>：安装 Tekton Triggers，用 Git Webhook 自动触发流水线</li>
+</ul>
+<h2 id="10-本地恢复与运维2026-08-20-补充">10. 本地恢复与运维（2026-08-20 补充）</h2>
+<blockquote>
+<p>本章记录重启 Docker Desktop 后的排障、一键恢复脚本、WSL2 迁移，以及 Dashboard 只读问题修复。</p>
+</blockquote>
+<h3 id="101-重启-docker-desktop-后-tekton消失的真相">10.1 重启 Docker Desktop 后 Tekton「消失」的真相</h3>
+<p><strong>现象</strong>：重启 Docker Desktop 后，用 <code>docker ps -a</code> 看不到任何「tekton」实例，以为 Tekton 丢了。</p>
+<p><strong>真相</strong>：Tekton 从来不是 Docker 容器，它是跑在 Docker Desktop 内置 Kubernetes（<code>docker-desktop</code> 集群）里的 K8s 工作负载（Deployment / Pod / CRD）。<code>docker ps -a</code> 只列 Docker Engine 直接管理的容器，Tekton 组件不会以「tekton」名字出现，所以「看不到」是<strong>查看工具用错了</strong>，不是真的消失。</p>
+<p>实测诊断（WSL2 / Git Bash 直连本机集群）：</p>
+<table>
+<thead>
+<tr>
+<th>检查项</th>
+<th>结果</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>集群 <code>docker-desktop</code></td>
+<td>Ready（节点 <code>desktop-control-plane</code>）</td>
+</tr>
+<tr>
+<td><code>tekton-pipelines</code> 命名空间</td>
+<td>Active</td>
+</tr>
+<tr>
+<td>4 个 Pod（controller/webhook/events/dashboard）</td>
+<td>全 <code>1/1 Running</code>（随 Docker 重启一起重启过）</td>
+</tr>
+<tr>
+<td><code>-shell-image</code> 补丁</td>
+<td>仍持久化为 <code>docker.io/library/busybox:1.36.1</code></td>
+</tr>
+<tr>
+<td>tkn / Pipeline / Dashboard</td>
+<td>0.45.0 / v1.6.0 / v0.71.0</td>
+</tr>
+<tr>
+<td>8 个 tekton.dev CRD</td>
+<td>齐全</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p>结论：本地 docker-desktop K8s 正常重启后会自动恢复状态（Pod 重启但会回来）。如果哪天真「全没了」（命名空间都没了），那是集群被 <strong>Reset / 自动更新重建 VM / K8s 开关被关再开</strong>，属于硬重置，需要重新部署。</p>
+</blockquote>
+<p><strong>正确的查看命令</strong>（别再用 <code>docker ps -a</code>）：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash">kubectl get pods -n tekton-pipelines -o wide
+kubectl get ns
+kubectl config current-context      <span class="c1"># 应为 docker-desktop</span>
+kubectl get nodes
+</code></pre></td></tr></table>
+</div>
+</div><h3 id="102-一键恢复脚本--wsl2-迁移">10.2 一键恢复脚本 + WSL2 迁移</h3>
+<p>裸 <code>kubectl apply</code> 远程 URL 的方案，一旦集群被硬重置就一切归零。因此把恢复流程固化为脚本，并迁入 WSL2 Ubuntu（跑 kubectl 比走 <code>/mnt/d</code> 更快）：</p>
+<p>脚本位置（WSL2）：<code>/home/leoyim/tekton/</code></p>
+<ul>
+<li><code>tekton-install.sh</code>：幂等恢复，切 <code>docker-desktop</code> 上下文 → 下载并 apply Pipeline + Dashboard 清单（缓存到 <code>manifests/</code>）→ 自动 patch <code>-shell-image</code> → rollout restart → 等待就绪</li>
+<li><code>tekton-forward.sh</code>：Dashboard 端口转发到 <code>localhost:9097</code></li>
+<li><code>demo-pipeline.yaml</code>：按第 7 节重建的示例流水线</li>
+</ul>
+<p>Windows 源副本仍在 <code>D:\Project\NoteBook\05Tekton\</code>（备份 + 与笔记同目录）。</p>
+<p>WSL2 内 kubectl 位于 <code>/usr/local/bin/kubectl</code>，上下文即 <code>docker-desktop</code>，脚本可直接运行。</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="c1"># WSL2 终端</span>
+<span class="nb">cd</span> ~/tekton
+bash tekton-install.sh     <span class="c1"># 集群被硬重置时一键还原（平时可跳过，纯验证用）</span>
+bash tekton-forward.sh     <span class="c1"># 另开终端：转发 Dashboard，浏览器开 http://localhost:9097</span>
+</code></pre></td></tr></table>
+</div>
+</div><blockquote>
+<p>注意：Dashboard 默认是<strong>只读部署</strong>（见 10.3），<code>tekton-install.sh</code> 目前只还原「能看」，如需界面可写，恢复后再跑 10.3 的两步。</p>
+</blockquote>
+<h3 id="103-dashboard-只读模式与修复ui-可写">10.3 Dashboard 只读模式与修复（UI 可写）</h3>
+<p><strong>现象</strong>：Dashboard 界面顶部提示 Read Only，不能从网页创建/编辑/删除资源。</p>
+<p><strong>根因</strong>：Tekton Dashboard 官方 release 默认就是只读部署，由「标志位 + RBAC」双重控制：</p>
+<ul>
+<li>部署参数含 <code>--read-only=true</code>（args 索引 8）</li>
+<li><code>tekton-dashboard</code> ServiceAccount 只绑定 <code>*-view</code>（只读）ClusterRole，无任何 edit 绑定</li>
+</ul>
+<blockquote>
+<p>只读<strong>只影响网页 UI 写操作</strong>；终端 <code>kubectl</code>/<code>tkn</code>（docker-desktop kubeconfig 是集群管理员）始终是全读写，用 <code>kubectl apply</code> 跑 <code>demo-pipeline.yaml</code> 不受影响。</p>
+</blockquote>
+<p><strong>改为可写（两步缺一不可）</strong>：</p>
+<p>① 给 <code>tekton-dashboard</code> SA 加 edit 权限：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span><span class="lnt">21
+</span><span class="lnt">22
+</span><span class="lnt">23
+</span><span class="lnt">24
+</span><span class="lnt">25
+</span><span class="lnt">26
+</span><span class="lnt">27
+</span><span class="lnt">28
+</span><span class="lnt">29
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash">kubectl apply -f - <span class="s">&lt;&lt;&#39;EOF&#39;
+</span><span class="s">apiVersion: rbac.authorization.k8s.io/v1
+</span><span class="s">kind: ClusterRole
+</span><span class="s">metadata:
+</span><span class="s">  name: tekton-dashboard-edit
+</span><span class="s">rules:
+</span><span class="s">  - apiGroups: [&#34;tekton.dev&#34;]
+</span><span class="s">    resources: [&#34;*&#34;]
+</span><span class="s">    verbs: [&#34;get&#34;,&#34;list&#34;,&#34;watch&#34;,&#34;create&#34;,&#34;update&#34;,&#34;patch&#34;,&#34;delete&#34;]
+</span><span class="s">  - apiGroups: [&#34;&#34;]
+</span><span class="s">    resources: [&#34;pods&#34;,&#34;pods/log&#34;,&#34;configmaps&#34;,&#34;secrets&#34;,&#34;persistentvolumeclaims&#34;,&#34;services&#34;]
+</span><span class="s">    verbs: [&#34;get&#34;,&#34;list&#34;,&#34;watch&#34;,&#34;create&#34;,&#34;update&#34;,&#34;patch&#34;,&#34;delete&#34;]
+</span><span class="s">  - apiGroups: [&#34;batch&#34;]
+</span><span class="s">    resources: [&#34;jobs&#34;]
+</span><span class="s">    verbs: [&#34;*&#34;]
+</span><span class="s">---
+</span><span class="s">apiVersion: rbac.authorization.k8s.io/v1
+</span><span class="s">kind: ClusterRoleBinding
+</span><span class="s">metadata:
+</span><span class="s">  name: tekton-dashboard-edit-binding
+</span><span class="s">roleRef:
+</span><span class="s">  apiGroup: rbac.authorization.k8s.io
+</span><span class="s">  kind: ClusterRole
+</span><span class="s">  name: tekton-dashboard-edit
+</span><span class="s">subjects:
+</span><span class="s">  - kind: ServiceAccount
+</span><span class="s">    name: tekton-dashboard
+</span><span class="s">    namespace: tekton-pipelines
+</span><span class="s">EOF</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>② 把 <code>--read-only=true</code> 改为 <code>false</code> 并重启：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash">kubectl patch deployment tekton-dashboard -n tekton-pipelines --type<span class="o">=</span>json <span class="se">\
+</span><span class="se"></span>  -p<span class="o">=</span><span class="s1">&#39;[{&#34;op&#34;:&#34;replace&#34;,&#34;path&#34;:&#34;/spec/template/spec/containers/0/args/8&#34;,&#34;value&#34;:&#34;--read-only=false&#34;}]&#39;</span>
+kubectl rollout restart deployment/tekton-dashboard -n tekton-pipelines
+</code></pre></td></tr></table>
+</div>
+</div><p>刷新 http://localhost:9097，Read Only 提示消失即生效。该改动存于 etcd，Pod 重启不丢；但<strong>集群被硬重置后会回来</strong>，届时需要重跑这两步（或把它并进 <code>tekton-install.sh</code>）。</p>
+<h3 id="104-demo-pipelineyaml-重建">10.4 demo-pipeline.yaml 重建</h3>
+<p>原笔记第 7 节只有流程描述、没存完整清单。已按第 7 节重建 <code>demo-pipeline.yaml</code>（<code>git-clone → analyze-repo → report-summary</code>），放 <code>~/tekton/</code> 与 <code>D:\Project\NoteBook\05Tekton\</code>。</p>
+<p>首次跑前需先装官方 <code>git-clone</code> Catalog Task：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash">kubectl apply -f https://raw.githubusercontent.com/tektoncd/catalog/main/task/git-clone/0.9/git-clone.yaml
+kubectl apply -f demo-pipeline.yaml
+</code></pre></td></tr></table>
+</div>
+</div><h2 id="附录关键经验教训清单">附录：关键经验教训清单</h2>
+<ul>
+<li>Docker Desktop 内置 K8s = kind 内核，Tekton 部署方式与真 kind 一致</li>
+<li><code>cgr.dev/chainguard/busybox</code> 在本机网络不稳定 → 改 <code>docker.io/library/busybox:1.36.1</code></li>
+<li><code>place-scripts</code> 注入无法用 <code>command</code>/<code>args</code> 绕过，必须从 <code>-shell-image</code> 解决</li>
+<li>Dashboard 的 <code>latest</code> 下载路径已 404，改用 GitHub Release 资产</li>
+<li>多文档 YAML 必须加 <code>---</code></li>
+<li>busybox <code>find</code> 不支持 <code>-printf</code>，用 <code>stat</code> 替代</li>
+<li><strong>Tekton 是 K8s 工作负载，不归 <code>docker ps</code> 管</strong>，用 <code>docker ps -a</code> 永远看不到「tekton」，正确查看用 <code>kubectl get pods -n tekton-pipelines</code></li>
+<li>重启 Docker Desktop 后 Tekton 通常自动恢复；真「全没了」= 集群硬重置（Reset / 自动更新重建 VM / K8s 重开），用 <code>tekton-install.sh</code> 一键还原</li>
+<li>恢复/运维脚本已迁入 WSL2 <code>/home/leoyim/tekton/</code>（<code>tekton-install.sh</code> / <code>tekton-forward.sh</code> / <code>demo-pipeline.yaml</code>），Windows 源副本在 <code>D:\Project\NoteBook\05Tekton\</code></li>
+<li>Dashboard 官方默认<strong>只读</strong>（<code>--read-only=true</code> 且 SA 仅绑 <code>*-view</code>），UI 想可写需加 edit ClusterRole/Binding + 把 flag 改 false（见 10.3）</li>
+<li>只读只限网页 UI；终端 <code>kubectl</code>/<code>tkn</code>（docker-desktop kubeconfig=集群管理员）始终是全读写</li>
+</ul></div><div class="post-footer" id="post-footer">
+    <div class="post-info">
+        <div class="post-info-line">
+            <div class="post-info-mod">
+                <span>更新于 2026-08-20</span>
+            </div>
+            <div class="post-info-license"></div>
+        </div>
+        <div class="post-info-line">
+            <div class="post-info-md"></div>
+            <div class="post-info-share">
+                <span><a href="javascript:void(0);" title="分享到 Twitter" data-sharer="twitter" data-url="http://leoyim.cn/tekton-local-deploy-practice/" data-title="Tekton 本地部署与实践笔记" data-hashtags="tekton,kubernetes,cicd,devops,实践笔记"><i class="fab fa-twitter fa-fw"></i></a><a href="javascript:void(0);" title="分享到 Facebook" data-sharer="facebook" data-url="http://leoyim.cn/tekton-local-deploy-practice/" data-hashtag="tekton"><i class="fab fa-facebook-square fa-fw"></i></a><a href="javascript:void(0);" title="分享到 Pinterest" data-sharer="pinterest" data-url="http://leoyim.cn/tekton-local-deploy-practice/" data-description="在 Docker Desktop 内置 Kubernetes（kind 内核）上部署 Tekton Pipelines v1.6.0 与 Dashboard，跑通 git-clone → analyze → report 示例流水线；含 cgr.dev 镜像坑、一键恢复脚本与 Dashboard 只读修复。"><i class="fab fa-pinterest fa-fw"></i></a><a href="javascript:void(0);" title="分享到 Reddit" data-sharer="reddit" data-url="http://leoyim.cn/tekton-local-deploy-practice/"><i class="fab fa-reddit fa-fw"></i></a><a href="javascript:void(0);" title="分享到 Flipboard" data-sharer="flipboard" data-url="http://leoyim.cn/tekton-local-deploy-practice/" data-title="Tekton 本地部署与实践笔记"><i class="fab fa-flipboard fa-fw"></i></a><a href="javascript:void(0);" title="分享到 微博" data-sharer="weibo" data-url="http://leoyim.cn/tekton-local-deploy-practice/" data-title="Tekton 本地部署与实践笔记"><i class="fab fa-weibo fa-fw"></i></a><a href="javascript:void(0);" title="分享到 百度" data-sharer="baidu" data-url="http://leoyim.cn/tekton-local-deploy-practice/" data-title="Tekton 本地部署与实践笔记"><i data-svg-src="https://cdn.jsdelivr.net/npm/simple-icons@2.14.0/icons/baidu.svg"></i></a><a href="javascript:void(0);" title="分享到 Evernote" data-sharer="evernote" data-url="http://leoyim.cn/tekton-local-deploy-practice/" data-title="Tekton 本地部署与实践笔记"><i class="fab fa-evernote fa-fw"></i></a></span>
+            </div>
+        </div>
+    </div>
+
+    <div class="post-info-more">
+        <section class="post-tags"><i class="fas fa-tags fa-fw"></i>&nbsp;<a href="/tags/tekton/">tekton</a>,&nbsp;<a href="/tags/kubernetes/">kubernetes</a>,&nbsp;<a href="/tags/cicd/">cicd</a>,&nbsp;<a href="/tags/devops/">devops</a>,&nbsp;<a href="/tags/%E5%AE%9E%E8%B7%B5%E7%AC%94%E8%AE%B0/">实践笔记</a></section>
+        <section>
+            <span><a href="javascript:void(0);" onclick="window.history.back();">返回</a></span>&nbsp;|&nbsp;<span><a href="/">主页</a></span>
+        </section>
+    </div>
+
+    <div class="post-nav"><a href="/jenkins-jvm-monitoring-dashboard/" class="prev" rel="prev" title="Jenkins JVM 监控仪表板设计与实践"><i class="fas fa-angle-left fa-fw"></i>Jenkins JVM 监控仪表板设计与实践</a>
+            <a href="/publish-html-as-blog-post/" class="next" rel="next" title="把 HTML 页面发布为博客文章">把 HTML 页面发布为博客文章<i class="fas fa-angle-right fa-fw"></i></a></div>
+</div>
+<div id="comments"><div id="disqus_thread" class="comment"></div><noscript>
+                Please enable JavaScript to view the comments powered by <a href="https://disqus.com/?ref_noscript">Disqus</a>.
+            </noscript></div></article></div>
+            </main><footer class="footer">
+        <div class="footer-container"><div class="footer-line">由 <a href="https://gohugo.io/" target="_blank" rel="noopener noreffer" title="Hugo 0.88.1">Hugo</a> 强力驱动 | 主题 - <a href="https://github.com/dillonzq/LoveIt" target="_blank" rel="noopener noreffer" title="LoveIt 0.2.10"><i class="far fa-kiss-wink-heart fa-fw"></i> LoveIt</a>
+                </div><div class="footer-line"><i class="far fa-copyright fa-fw"></i><span itemprop="copyrightYear">2019 - 2026</span><span class="author" itemprop="copyrightHolder">&nbsp;<a href="mailto:leo.yanwb@outlook.com" target="_blank">leoyim</a></span>&nbsp;|&nbsp;<span class="license"><a rel="license external nofollow noopener noreffer" href="https://creativecommons.org/licenses/by-nc/4.0/" target="_blank">CC BY-NC 4.0</a></span><span class="icp-splitter">&nbsp;|&nbsp;</span><br class="icp-br"/>
+                    <span class="icp"><a href='http://beian.miit.gov.cn/'>豫ICP备2023037428号-1</a></span></div>
+        </div>
+        <script>
+            daovoice('init', {
+            app_id: "b3166d69"
+            });
+            daovoice('update');
+        </script>
+    </footer></div>
+
+        <div id="fixed-buttons"><a href="#" id="back-to-top" class="fixed-button" title="回到顶部">
+                <i class="fas fa-arrow-up fa-fw"></i>
+            </a><a href="#" id="view-comments" class="fixed-button" title="查看评论">
+                <i class="fas fa-comment fa-fw"></i>
+            </a>
+        </div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/lightgallery.js@1.2.0/dist/css/lightgallery.min.css"><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/object-fit-images@3.2.4/dist/ofi.min.js"></script><script type="text/javascript" src="https://leoyim.disqus.com/embed.js" defer></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/smooth-scroll@16.1.3/dist/smooth-scroll.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/autocomplete.js@0.37.1/dist/autocomplete.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/algoliasearch@4.2.0/dist/algoliasearch-lite.umd.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/lazysizes@5.2.2/lazysizes.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/twemoji@13.0.0/dist/twemoji.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/lightgallery.js@1.2.0/dist/js/lightgallery.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/lg-thumbnail.js@1.2.0/dist/lg-thumbnail.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/lg-zoom.js@1.2.0/dist/lg-zoom.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/clipboard@2.0.6/dist/clipboard.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/sharer.js@0.4.0/sharer.min.js"></script><script type="text/javascript">window.config={"code":{"copyTitle":"复制到剪贴板","maxShownLines":1000},"comment":{},"lightGallery":{"actualSize":false,"exThumbImage":"data-thumbnail","hideBarsDelay":2000,"selector":".lightgallery","speed":400,"thumbContHeight":80,"thumbWidth":80,"thumbnail":true},"search":{"algoliaAppID":"YFBNEDZD4V","algoliaIndex":"index.zh-cn","algoliaSearchKey":"7ba668fbb896bf1350eb7d0fc3e4f394","highlightTag":"em","maxResultLength":10,"noResultsFound":"没有找到结果","snippetLength":50,"type":"algolia"},"twemoji":true};</script><script type="text/javascript" src="/js/theme.min.7bc7989e979c4a19d97db3ab311a80fe.js" integrity="md5-e8eYnpecShnZfbOrMRqA/g=="></script></body>
+</html>
