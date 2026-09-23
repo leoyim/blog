@@ -2,13 +2,18 @@
     xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
     xmlns:xhtml="http://www.w3.org/1999/xhtml"
     ><url>
-            <loc>http://leoyim.cn/categories/</loc><lastmod>2026-09-22T14:00:00&#43;08:00</lastmod><changefreq>weekly</changefreq><priority>1</priority></url><url>
+            <loc>http://leoyim.cn/categories/ai/</loc><lastmod>2026-09-23T09:44:00&#43;08:00</lastmod><changefreq>weekly</changefreq><priority>1</priority></url><url>
+            <loc>http://leoyim.cn/tags/ai-%E6%A8%A1%E5%9E%8B/</loc><lastmod>2026-09-23T09:44:00&#43;08:00</lastmod><changefreq>weekly</changefreq><priority>1</priority></url><url>
+            <loc>http://leoyim.cn/categories/</loc><lastmod>2026-09-23T09:44:00&#43;08:00</lastmod><changefreq>weekly</changefreq><priority>1</priority></url><url>
+            <loc>http://leoyim.cn/tags/jev/</loc><lastmod>2026-09-23T09:44:00&#43;08:00</lastmod><changefreq>weekly</changefreq><priority>1</priority></url><url>
+            <loc>http://leoyim.cn/jev-ai-analysis/</loc><lastmod>2026-09-23T09:44:00&#43;08:00</lastmod><changefreq>weekly</changefreq><priority>1</priority></url><url>
+            <loc>http://leoyim.cn/</loc><lastmod>2026-09-23T09:44:00&#43;08:00</lastmod><changefreq>weekly</changefreq><priority>1</priority></url><url>
+            <loc>http://leoyim.cn/posts/</loc><lastmod>2026-09-23T09:44:00&#43;08:00</lastmod><changefreq>weekly</changefreq><priority>1</priority></url><url>
+            <loc>http://leoyim.cn/tags/</loc><lastmod>2026-09-23T09:44:00&#43;08:00</lastmod><changefreq>weekly</changefreq><priority>1</priority></url><url>
+            <loc>http://leoyim.cn/tags/typesafe-ai/</loc><lastmod>2026-09-23T09:44:00&#43;08:00</lastmod><changefreq>weekly</changefreq><priority>1</priority></url><url>
             <loc>http://leoyim.cn/tags/html/</loc><lastmod>2026-09-22T14:00:00&#43;08:00</lastmod><changefreq>weekly</changefreq><priority>1</priority></url><url>
             <loc>http://leoyim.cn/tags/hugo/</loc><lastmod>2026-09-22T14:00:00&#43;08:00</lastmod><changefreq>weekly</changefreq><priority>1</priority></url><url>
-            <loc>http://leoyim.cn/</loc><lastmod>2026-09-22T14:00:00&#43;08:00</lastmod><changefreq>weekly</changefreq><priority>1</priority></url><url>
             <loc>http://leoyim.cn/tags/loveit/</loc><lastmod>2026-09-22T14:00:00&#43;08:00</lastmod><changefreq>weekly</changefreq><priority>1</priority></url><url>
-            <loc>http://leoyim.cn/posts/</loc><lastmod>2026-09-22T14:00:00&#43;08:00</lastmod><changefreq>weekly</changefreq><priority>1</priority></url><url>
-            <loc>http://leoyim.cn/tags/</loc><lastmod>2026-09-22T14:00:00&#43;08:00</lastmod><changefreq>weekly</changefreq><priority>1</priority></url><url>
             <loc>http://leoyim.cn/tags/%E5%8D%9A%E5%AE%A2/</loc><lastmod>2026-09-22T14:00:00&#43;08:00</lastmod><changefreq>weekly</changefreq><priority>1</priority></url><url>
             <loc>http://leoyim.cn/categories/%E5%B7%A5%E5%85%B7/</loc><lastmod>2026-09-22T14:00:00&#43;08:00</lastmod><changefreq>weekly</changefreq><priority>1</priority></url><url>
             <loc>http://leoyim.cn/publish-html-as-blog-post/</loc><lastmod>2026-09-22T14:00:00&#43;08:00</lastmod><changefreq>weekly</changefreq><priority>1</priority></url><url>
